@@ -26,7 +26,7 @@ export type TimelineSource = {
 }
 
 export type TimelineRelated = {
-  kind: 'person' | 'place' | 'team'
+  kind: 'person' | 'place' | 'team' | 'company'
   label: string
 }
 
@@ -38,6 +38,8 @@ export type TimelineEvent = {
   dateStart: string
   category: string
   importance: TimelineImportance
+  /** Optional facet, e.g. "apple-product", "draft", "ipo" */
+  subtype?: string
   /** Short line for hover preview */
   summary: string
   /** Longer narrative for detail panel (optional) */
@@ -46,7 +48,18 @@ export type TimelineEvent = {
   facts: TimelineFact[]
   sources: TimelineSource[]
   related: TimelineRelated[]
+  /** Hardware / SKU names tied to the milestone */
+  products?: string[]
+  /** Curated standouts (e.g. yearly top 3 platform picks) */
+  notableGames?: string[]
+  /** e.g. "5th gen", "HD era", "Switch era" */
+  platformGeneration?: string
+  publisher?: string
+  studio?: string
 }
+
+/** High-level family for menus, accents, and future grouped navigation. */
+export type TopicGroupId = 'sports' | 'tech' | 'history' | 'gaming'
 
 export type TopicId =
   | 'sf-giants'
@@ -54,5 +67,24 @@ export type TopicId =
   | 'gs-warriors'
   | 'sj-sharks'
   | 'sv-tech'
+  | 'apple'
+  | 'ycombinator'
+  | 'nvidia'
+  | 'ai-history'
   | 'sf-city'
   | 'us-history'
+  | 'nintendo'
+  | 'xbox'
+
+/** Curated topic: metadata + local seed events (single source in `curatedTopics`). */
+export type CuratedTopic = {
+  id: TopicId
+  label: string
+  /** Short label on the closed selector control */
+  trigger: string
+  groupId: TopicGroupId
+  description: string
+  /** CSS color (hex or oklch) — drives shell accent via CSS variables */
+  accentColor: string
+  events: TimelineEvent[]
+}

@@ -1,6 +1,6 @@
 import { motion, useReducedMotion } from 'framer-motion'
 import { useMemo } from 'react'
-import { getSortedSfGiantsEvents } from '../../data/seeds/sfGiants'
+import { getSortedEventsForTopic } from '../../data/topicEvents'
 import {
   referenceLayoutMorphSpring,
   shellMicroSpring,
@@ -16,13 +16,36 @@ import {
   NODE_SELECT_RING_PAD,
 } from '../../lib/timelineVisual'
 import { useAppStore } from '../../store/useAppStore'
-import { computeSceneLayout, TIMELINE_CY, TIMELINE_VIEW } from './timelineLayoutMath'
+import {
+  computeSceneLayout,
+  TIMELINE_CY,
+  TIMELINE_VIEW,
+  type Point,
+  type Segment,
+} from './timelineLayoutMath'
 
 const { w: W, h: H } = TIMELINE_VIEW
 
+/** Refined hash scale — small marks, no orbs (reference density). */
+const MARK_SCALE = 0.84
+const TICK_SCALE = 0.78
+
+function scaleTickTowardCenter(
+  tick: Segment,
+  cx: number,
+  cy: number,
+  k: number,
+): Segment {
+  return {
+    x1: cx + (tick.x1 - cx) * k,
+    y1: cy + (tick.y1 - cy) * k,
+    x2: cx + (tick.x2 - cx) * k,
+    y2: cy + (tick.y2 - cy) * k,
+  }
+}
+
 /**
- * One SVG scene: nodes and guides interpolate between H / V / Radial geometries
- * (no per-mode remount — continuous transformation).
+ * Hero timeline: one morphing scene across horizontal / vertical / radial (same ids, same springs).
  */
 export function UnifiedDataTimeline() {
   const reduceMotion = useReducedMotion()
@@ -39,15 +62,14 @@ export function UnifiedDataTimeline() {
   const setHoverId = useAppStore((s) => s.setHorizontalHoverEventId)
   const setPreviewPoint = useAppStore((s) => s.setEventPreviewPoint)
   const openEventDetail = useAppStore((s) => s.openEventDetail)
+  const setEventDetailOpen = useAppStore((s) => s.setEventDetailOpen)
   const dismiss = useAppStore((s) => s.dismissTimelineInteraction)
   const setSelectedId = useAppStore((s) => s.setHorizontalSelectedEventId)
 
-  const events = useMemo(() => {
-    const useGiants =
-      activeTopicId === 'sf-giants' || activeTopicId === null
-    if (!useGiants) return []
-    return getSortedSfGiantsEvents()
-  }, [activeTopicId])
+  const events = useMemo(
+    () => getSortedEventsForTopic(activeTopicId),
+    [activeTopicId],
+  )
 
   const { tMin, tMax } = useMemo(() => {
     if (events.length === 0) return { tMin: 0, tMax: 1 }
@@ -66,7 +88,6 @@ export function UnifiedDataTimeline() {
     ...morphXY,
     opacity: shellMicroSpring,
   } as const
-  /** cx/cy use layout morph spring; r uses micro spring (hover bump + no SVG transform scale). */
   const nodeTransition = {
     cx: morph,
     cy: morph,
@@ -80,7 +101,7 @@ export function UnifiedDataTimeline() {
         className="h-full w-full text-ink/22"
         fill="none"
         role="img"
-        aria-label="No timeline events for this topic"
+        aria-label="No events"
       >
         <line
           x1={58}
@@ -89,7 +110,7 @@ export function UnifiedDataTimeline() {
           y2={TIMELINE_CY}
           stroke="currentColor"
           strokeWidth={1}
-          strokeOpacity={0.22}
+          strokeOpacity={0.2}
         />
       </svg>
     )
@@ -98,9 +119,9 @@ export function UnifiedDataTimeline() {
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      className="h-full w-full cursor-default overflow-hidden text-ink/22"
+      className="h-full w-full cursor-default overflow-visible text-ink/22"
       fill="none"
-      role="group"
+      role="img"
       aria-label="Timeline"
     >
       <rect
@@ -112,27 +133,6 @@ export function UnifiedDataTimeline() {
         aria-hidden
       />
 
-      {layout.decadeTicks.map(({ year, x }) => (
-        <motion.line
-          key={`decade-${year}`}
-          stroke="currentColor"
-          strokeWidth={1}
-          initial={false}
-          animate={{
-            x1: x,
-            y1: TIMELINE_CY - 44,
-            x2: x,
-            y2: TIMELINE_CY + 44,
-            opacity: timelineMode === 'horizontal' ? 0.07 : 0,
-          }}
-          transition={{
-            ...morphXY,
-            opacity: spineOpacityTransition,
-          }}
-          style={{ pointerEvents: 'none' }}
-        />
-      ))}
-
       <motion.line
         stroke="currentColor"
         strokeWidth={1}
@@ -143,7 +143,7 @@ export function UnifiedDataTimeline() {
           y1: layout.spineLine.y1,
           x2: layout.spineLine.x2,
           y2: layout.spineLine.y2,
-          opacity: timelineMode === 'radial' ? 0 : 0.22,
+          opacity: timelineMode === 'radial' ? 0 : 0.19,
         }}
         transition={{
           x1: morph,
@@ -163,16 +163,22 @@ export function UnifiedDataTimeline() {
         strokeLinecap="round"
         initial={false}
         animate={{
-          opacity: timelineMode === 'radial' ? 0.22 : 0,
+          opacity: timelineMode === 'radial' ? 0.2 : 0,
         }}
         transition={{ opacity: spineOpacityTransition }}
         style={{ pointerEvents: 'none' }}
       />
 
       {events.map((e, i) => {
-        const center = layout.nodeCenters[i]!
-        const tick = layout.nodeTicks[i]!
-        const baseR = importanceRadius(e.importance)
+        const center: Point = layout.nodeCenters[i]!
+        const tickRaw = layout.nodeTicks[i]!
+        const tick = scaleTickTowardCenter(
+          tickRaw,
+          center.x,
+          center.y,
+          TICK_SCALE,
+        )
+        const baseR = importanceRadius(e.importance) * MARK_SCALE
         const isSelected = selectedId === e.id
         const isHovered = hoverId === e.id
         const fill = isSelected
@@ -181,12 +187,7 @@ export function UnifiedDataTimeline() {
             ? NODE_FILL_MUTED_HOVER
             : NODE_FILL_MUTED
 
-        const tickBase =
-          timelineMode === 'horizontal'
-            ? 0.18
-            : timelineMode === 'vertical'
-              ? 0.16
-              : 0.11
+        const tickBase = timelineMode === 'radial' ? 0.09 : 0.14
 
         return (
           <g
@@ -205,6 +206,11 @@ export function UnifiedDataTimeline() {
             }}
             onClick={(ev) => {
               ev.stopPropagation()
+              setSelectedId(e.id)
+              setEventDetailOpen(false)
+            }}
+            onDoubleClick={(ev) => {
+              ev.stopPropagation()
               openEventDetail(e.id)
             }}
           >
@@ -219,13 +225,11 @@ export function UnifiedDataTimeline() {
                 x2: tick.x2,
                 y2: tick.y2,
                 opacity: isSelected
-                  ? timelineMode === 'horizontal'
-                    ? 0.35
-                    : timelineMode === 'vertical'
-                      ? 0.32
-                      : 0.26
+                  ? timelineMode === 'radial'
+                    ? 0.24
+                    : 0.3
                   : isHovered
-                    ? tickBase + 0.08
+                    ? tickBase + 0.07
                     : tickBase,
               }}
               transition={tickTransition}
@@ -239,7 +243,7 @@ export function UnifiedDataTimeline() {
               animate={{
                 cx: center.x,
                 cy: center.y,
-                r: baseR + NODE_SELECT_RING_PAD,
+                r: baseR + NODE_SELECT_RING_PAD * MARK_SCALE,
                 strokeOpacity: isSelected ? 0.2 : 0,
               }}
               transition={morphCenter}

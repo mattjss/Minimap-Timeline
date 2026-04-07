@@ -51,18 +51,18 @@ export type ImportanceLevel = 1 | 2 | 3
 export function importanceRadius(importance: ImportanceLevel): number {
   switch (importance) {
     case 1:
-      return 2.5
+      return 2.05
     case 2:
-      return 3
+      return 2.62
     case 3:
-      return 3.5
+      return 3.05
     default:
-      return 2.5
+      return 2.05
   }
 }
 
-/** Hover scale applied in motion (subtle). */
-export const NODE_HOVER_SCALE = 1.045
+/** Hover scale applied in motion (tight, reference-quiet). */
+export const NODE_HOVER_SCALE = 1.032
 
 /** Extra radius for selection ring stroke (user units). */
 export const NODE_SELECT_RING_PAD = 3
@@ -73,7 +73,7 @@ export const NODE_FILL_MUTED = '#8f867a'
 export const NODE_FILL_MUTED_HOVER = '#9e958a'
 
 /** Matches @theme --color-accent */
-export const NODE_FILL_ACCENT = '#c4a574'
+export const NODE_FILL_ACCENT = '#c9ae7a'
 
 /** @deprecated Glow removed for reference fidelity; kept for any legacy filter ids. */
 export const NODE_GLOW_FILTER_ID = 'timeline-node-glow'

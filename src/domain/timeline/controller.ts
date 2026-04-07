@@ -1,3 +1,4 @@
+import { CURATED_TOPIC_IDS } from '../../data/curatedTopics'
 import { useAppStore } from '../../store/useAppStore'
 import type { TimelineLayoutMode, TopicId } from '../../types'
 import type { TimelineShellSnapshot } from './types'
@@ -9,15 +10,7 @@ function isLayoutMode(v: string): v is TimelineLayoutMode {
   return v === 'horizontal' || v === 'vertical' || v === 'radial'
 }
 
-const TOPIC_IDS = new Set<TopicId>([
-  'sf-giants',
-  'sf-49ers',
-  'gs-warriors',
-  'sj-sharks',
-  'sv-tech',
-  'sf-city',
-  'us-history',
-])
+const TOPIC_IDS = new Set<TopicId>(CURATED_TOPIC_IDS)
 
 function isTopicId(v: string): v is TopicId {
   return TOPIC_IDS.has(v as TopicId)
@@ -35,10 +28,10 @@ export const timelineController = {
       useAppStore.setState({ timelineMode: rawMode })
     }
     const rawTopic = sessionStorage.getItem(TOPIC_KEY)
-    if (rawTopic === '' || rawTopic === 'null') {
-      useAppStore.setState({ activeTopicId: null })
-    } else if (rawTopic && isTopicId(rawTopic)) {
+    if (rawTopic && isTopicId(rawTopic)) {
       useAppStore.setState({ activeTopicId: rawTopic })
+    } else {
+      useAppStore.setState({ activeTopicId: 'sf-giants' })
     }
   },
 
@@ -51,11 +44,11 @@ export const timelineController = {
   },
 
   selectTopic(id: TopicId | null): void {
+    const next = id ?? 'sf-giants'
     if (typeof sessionStorage !== 'undefined') {
-      if (id === null) sessionStorage.removeItem(TOPIC_KEY)
-      else sessionStorage.setItem(TOPIC_KEY, id)
+      sessionStorage.setItem(TOPIC_KEY, next)
     }
-    useAppStore.getState().setActiveTopicId(id)
+    useAppStore.getState().setActiveTopicId(next)
   },
 
   getSnapshot(): TimelineShellSnapshot {

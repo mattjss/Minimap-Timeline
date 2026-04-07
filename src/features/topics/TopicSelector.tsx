@@ -1,4 +1,1 @@
-/** Topic switcher for curated histories (not implemented). */
-export function TopicSelector() {
-  return null
-}
+export { TopicSelector } from '../../components/layout/TopicSelector'

@@ -19,7 +19,7 @@ const timelineSourceSchema = z.object({
 })
 
 const timelineRelatedSchema = z.object({
-  kind: z.enum(['person', 'place', 'team']),
+  kind: z.enum(['person', 'place', 'team', 'company']),
   label: z.string().min(1),
 })
 
@@ -30,12 +30,18 @@ export const timelineEventSchema = z.object({
   dateStart: z.string().min(1),
   category: z.string().min(1),
   importance: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  subtype: z.string().optional(),
   summary: z.string().min(1),
   description: z.string().optional(),
   media: z.array(timelineMediaItemSchema).default([]),
   facts: z.array(timelineFactSchema).default([]),
   sources: z.array(timelineSourceSchema).default([]),
   related: z.array(timelineRelatedSchema).default([]),
+  products: z.array(z.string().min(1)).optional(),
+  notableGames: z.array(z.string().min(1)).max(10).optional(),
+  platformGeneration: z.string().optional(),
+  publisher: z.string().optional(),
+  studio: z.string().optional(),
 })
 
 export type TimelineEventSchema = z.infer<typeof timelineEventSchema>

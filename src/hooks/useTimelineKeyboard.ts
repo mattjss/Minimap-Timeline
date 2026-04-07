@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { getSortedEventsForTopic } from '../data/topicEvents'
 import { timelineController } from '../domain/timeline'
 import { useAppStore } from '../store/useAppStore'
 import type { TimelineLayoutMode } from '../types'
@@ -37,10 +38,10 @@ export function useTimelineKeyboard() {
       if (e.key === 'Enter') {
         if (store.eventDetailOpen) return
         const topic = store.activeTopicId
-        const giants = topic === 'sf-giants' || topic === null
+        const events = getSortedEventsForTopic(topic)
         const mode = snap.layoutMode
         if (
-          giants &&
+          events.length > 0 &&
           store.horizontalSelectedEventId &&
           (mode === 'horizontal' || mode === 'vertical' || mode === 'radial')
         ) {
@@ -50,17 +51,22 @@ export function useTimelineKeyboard() {
         return
       }
 
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      if (
+        e.key === 'ArrowLeft' ||
+        e.key === 'ArrowRight' ||
+        e.key === 'ArrowUp' ||
+        e.key === 'ArrowDown'
+      ) {
         const topic = useAppStore.getState().activeTopicId
-        const giants = topic === 'sf-giants' || topic === null
+        const events = getSortedEventsForTopic(topic)
         const mode = snap.layoutMode
         if (
-          giants &&
+          events.length > 0 &&
           (mode === 'horizontal' || mode === 'vertical' || mode === 'radial')
         ) {
-          useAppStore
-            .getState()
-            .stepHorizontalSelection(e.key === 'ArrowLeft' ? -1 : 1)
+          const back =
+            e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 1
+          useAppStore.getState().stepHorizontalSelection(back)
           e.preventDefault()
         }
         return

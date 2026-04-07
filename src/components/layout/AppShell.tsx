@@ -2,27 +2,25 @@ import { LayoutGroup } from 'framer-motion'
 import { EventDetailModal } from '../../features/timeline/EventDetailModal'
 import { TimelineCanvas } from '../../features/timeline/TimelineCanvas'
 import { useTimelineKeyboard } from '../../hooks/useTimelineKeyboard'
+import { useTopicChromeVars } from '../../hooks/useTopicChromeVars'
 import { CanvasBackdrop } from './CanvasBackdrop'
-import { Header } from './Header'
 import { TimelineModeToggle } from './TimelineModeToggle'
 
 export function AppShell() {
   useTimelineKeyboard()
+  const topicChrome = useTopicChromeVars()
 
   return (
-    <div className="relative min-h-dvh overflow-hidden bg-canvas text-ink">
+    <div
+      style={topicChrome}
+      className="fixed inset-0 z-0 flex h-dvh min-h-dvh w-full max-w-[100vw] flex-col overflow-hidden bg-canvas text-ink"
+    >
       <CanvasBackdrop />
 
       <LayoutGroup id="timeline-shell-sync">
-        <div className="relative z-10 flex min-h-dvh flex-col">
-          <Header />
-          <main className="relative min-h-0 flex-1 overflow-hidden">
-            <span id="timeline-region-desc" className="sr-only">
-              Interactive timeline; arrow keys move between events
-            </span>
-            <TimelineCanvas aria-labelledby="timeline-region-desc" />
-          </main>
-        </div>
+        <main className="absolute inset-0 min-h-0 min-w-0">
+          <TimelineCanvas />
+        </main>
 
         <TimelineModeToggle />
       </LayoutGroup>

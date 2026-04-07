@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { getSortedSfGiantsEvents } from '../data/seeds/sfGiants'
+import { getSortedEventsForTopic } from '../data/topicEvents'
 import type { TimelineLayoutMode, TopicId } from '../types'
 
 export type EventPreviewPoint = { relX: number; relY: number }
@@ -25,9 +25,23 @@ type AppState = {
   stepHorizontalSelection: (delta: -1 | 1) => void
 }
 
+function firstEventIdForTopic(topicId: TopicId | null): string | null {
+  const events = getSortedEventsForTopic(topicId)
+  return events[0]?.id ?? null
+}
+
 export const useAppStore = create<AppState>((set, get) => ({
   activeTopicId: 'sf-giants',
-  setActiveTopicId: (activeTopicId) => set({ activeTopicId }),
+  setActiveTopicId: (activeTopicId) => {
+    const first = firstEventIdForTopic(activeTopicId)
+    set({
+      activeTopicId,
+      horizontalHoverEventId: null,
+      eventPreviewPoint: null,
+      horizontalSelectedEventId: first,
+      eventDetailOpen: false,
+    })
+  },
   timelineMode: 'horizontal',
   setTimelineMode: (timelineMode) =>
     set({
@@ -39,7 +53,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   horizontalHoverEventId: null,
   setHorizontalHoverEventId: (horizontalHoverEventId) =>
     set({ horizontalHoverEventId }),
-  horizontalSelectedEventId: null,
+  horizontalSelectedEventId: firstEventIdForTopic('sf-giants'),
   setHorizontalSelectedEventId: (horizontalSelectedEventId) =>
     set({ horizontalSelectedEventId }),
   eventPreviewPoint: null,
@@ -69,16 +83,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     ) {
       return
     }
-    const useGiants =
-      s.activeTopicId === 'sf-giants' || s.activeTopicId === null
-    if (!useGiants) return
-    const events = getSortedSfGiantsEvents()
+    const events = getSortedEventsForTopic(s.activeTopicId)
     if (events.length === 0) return
     const idx = events.findIndex((e) => e.id === s.horizontalSelectedEventId)
     if (idx < 0) {
       const i = delta > 0 ? 0 : events.length - 1
       set({
-        horizontalSelectedEventId: events[i].id,
+        horizontalSelectedEventId: events[i]!.id,
         eventDetailOpen: false,
         horizontalHoverEventId: null,
         eventPreviewPoint: null,
@@ -87,7 +98,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     const next = Math.min(events.length - 1, Math.max(0, idx + delta))
     set({
-      horizontalSelectedEventId: events[next].id,
+      horizontalSelectedEventId: events[next]!.id,
       eventDetailOpen: false,
       horizontalHoverEventId: null,
       eventPreviewPoint: null,

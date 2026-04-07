@@ -1,27 +1,17 @@
-import {
-  AnimatePresence,
-  motion,
-  useReducedMotion,
-} from 'framer-motion'
-import { motionTransition, referenceLayoutMorphSpring } from '../../lib/motion'
+import { useReducedMotion } from 'framer-motion'
+import { topicHasRenderableTimeline } from '../../data/topicEvents'
+import { referenceLayoutMorphSpring } from '../../lib/motion'
 import { cn } from '../../lib/utils'
 import { useAppStore } from '../../store/useAppStore'
+import { TIMELINE_VIEW } from '../../lib/timelineVisual'
 import { EventHoverPreview } from './EventHoverPreview'
 import { SchematicTimeline } from './SchematicTimeline'
 import { UnifiedDataTimeline } from './UnifiedDataTimeline'
 
-type TimelineCanvasProps = {
-  'aria-labelledby'?: string
-  'aria-label'?: string
-}
-
 /**
- * Large stage: one continuous data scene; hover preview mounted inside stage bounds.
+ * Cinematic centered stage: timeline geometry is the hero (reference composition).
  */
-export function TimelineCanvas({
-  'aria-labelledby': ariaLabelledBy,
-  'aria-label': ariaLabel = 'Timeline',
-}: TimelineCanvasProps) {
+export function TimelineCanvas() {
   const timelineMode = useAppStore((s) => s.timelineMode)
   const activeTopicId = useAppStore((s) => s.activeTopicId)
   const reduceMotion = useReducedMotion()
@@ -30,80 +20,55 @@ export function TimelineCanvas({
     ? { duration: 0 }
     : { ...referenceLayoutMorphSpring }
 
-  const crossfade = {
-    duration: instant ? 0 : 0.32,
-    ease: motionTransition.ease,
-  }
-
-  const useGiants =
-    activeTopicId === 'sf-giants' || activeTopicId === null
-
   const showDataTimeline =
-    useGiants &&
+    topicHasRenderableTimeline(activeTopicId) &&
     (timelineMode === 'horizontal' ||
       timelineMode === 'vertical' ||
       timelineMode === 'radial')
 
-  const regionA11y = ariaLabelledBy
-    ? ({ 'aria-labelledby': ariaLabelledBy } as const)
-    : ({ 'aria-label': ariaLabel } as const)
-
   return (
     <div
       role="region"
-      {...regionA11y}
+      aria-label="Timeline"
       className={cn(
-        'absolute inset-0 flex items-center justify-center px-3 pb-32 pt-1 sm:px-5 sm:pb-36',
-        showDataTimeline ? 'pointer-events-auto' : 'pointer-events-none',
+        'absolute inset-0 flex min-h-0 min-w-0 flex-col',
+        'pointer-events-auto',
+        'items-center justify-center',
+        'px-4 pb-8 pt-[4.75rem] sm:pb-10 sm:pt-[5.25rem]',
       )}
     >
       <div
-        className={cn(
-          'relative isolate w-full max-w-[min(96vw,52rem)] overflow-hidden rounded-[1.05rem]',
-          'aspect-video min-h-[min(52vh,420px)] sm:min-h-[min(56vh,480px)]',
-          'border border-white/10 bg-black/20',
-          'shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]',
-          '[contain:paint]',
-        )}
+        className="pointer-events-none absolute inset-0 opacity-[0.85]"
+        style={{
+          background: `
+            radial-gradient(ellipse 72% 58% at 50% 46%, transparent 0%, rgba(0,0,0,0.34) 100%),
+            radial-gradient(ellipse 88% 70% at 50% 50%, transparent 22%, rgba(0,0,0,0.18) 100%)
+          `,
+        }}
+        aria-hidden
+      />
+
+      <div
+        data-timeline-stage
+        className="relative z-[1] w-full max-w-[min(92vw,640px)] select-none"
+        style={{ aspectRatio: `${TIMELINE_VIEW.w} / ${TIMELINE_VIEW.h}` }}
       >
-        <div
-          data-timeline-stage
-          className={cn(
-            'absolute inset-[3%] overflow-visible sm:inset-[2.5%]',
-            'relative',
+        <div className="absolute inset-0 min-h-0 min-w-0">
+          {showDataTimeline ? (
+            <UnifiedDataTimeline />
+          ) : (
+            <SchematicTimeline
+              mode={timelineMode}
+              transition={morphTransition}
+            />
           )}
-        >
-          <AnimatePresence mode="wait">
-            {showDataTimeline ? (
-              <motion.div
-                key="data-timeline"
-                className="absolute inset-0 select-none"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={crossfade}
-              >
-                <UnifiedDataTimeline />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="schematic"
-                className="absolute inset-0 overflow-hidden select-none"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={crossfade}
-              >
-                <SchematicTimeline
-                  mode={timelineMode}
-                  transition={morphTransition}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <EventHoverPreview />
         </div>
+        <EventHoverPreview />
       </div>
+
+      <span className="sr-only">
+        Interactive timeline. Top bar: topic and geometry mode.
+      </span>
     </div>
   )
 }

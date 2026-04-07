@@ -4,19 +4,17 @@ import { timelineModeSyncSpring } from '../../lib/motion'
 import { cn } from '../../lib/utils'
 import { useAppStore } from '../../store/useAppStore'
 import type { TimelineLayoutMode } from '../../types'
+import { TopicSelector } from './TopicSelector'
 
-/** Minus bar from minus-sign-solid-rounded.svg — horizontal = default; vertical = rotate 90°. */
-const MINUS_BAR_PATH =
-  'M21.25 12C21.25 12.6904 20.6904 13.25 20 13.25H4C3.30964 13.25 2.75 12.6904 2.75 12C2.75 11.3096 3.30964 10.75 4 10.75L20 10.75C20.6904 10.75 21.25 11.3096 21.25 12Z'
-
-const MODES: { id: TimelineLayoutMode; label: string }[] = [
-  { id: 'horizontal', label: 'Horizontal layout' },
-  { id: 'vertical', label: 'Vertical layout' },
-  { id: 'radial', label: 'Circular layout' },
+const MODES: { id: TimelineLayoutMode; ariaLabel: string }[] = [
+  { id: 'horizontal', ariaLabel: 'Horizontal timeline' },
+  { id: 'vertical', ariaLabel: 'Vertical timeline' },
+  { id: 'radial', ariaLabel: 'Circular timeline' },
 ]
 
-const ICON_SIZE = 18
+const GLYPH = 15
 
+/** Stroke geometry: horizontal line, vertical line, circle — one system, three poses. */
 function ModeGlyph({
   mode,
   active,
@@ -24,52 +22,36 @@ function ModeGlyph({
   mode: TimelineLayoutMode
   active: boolean
 }) {
-  const opacity = active ? 0.95 : 0.4
+  const stroke = active ? 'rgba(236,232,225,0.9)' : 'rgba(100,96,88,0.48)'
   const common = {
-    width: ICON_SIZE,
-    height: ICON_SIZE,
+    width: GLYPH,
+    height: GLYPH,
     viewBox: '0 0 24 24',
     className: 'mx-auto block shrink-0',
+    fill: 'none' as const,
+    stroke,
+    strokeWidth: 1.75,
+    strokeLinecap: 'round' as const,
     'aria-hidden': true as const,
-    style: { opacity },
   }
 
   switch (mode) {
     case 'horizontal':
       return (
         <svg {...common}>
-          <path
-            fillRule="evenodd"
-            clipRule="evenodd"
-            d={MINUS_BAR_PATH}
-            fill="currentColor"
-          />
+          <line x1="5" y1="12" x2="19" y2="12" />
         </svg>
       )
     case 'vertical':
       return (
         <svg {...common}>
-          <g transform="rotate(90 12 12)">
-            <path
-              fillRule="evenodd"
-              clipRule="evenodd"
-              d={MINUS_BAR_PATH}
-              fill="currentColor"
-            />
-          </g>
+          <line x1="12" y1="5" x2="12" y2="19" />
         </svg>
       )
     case 'radial':
       return (
-        <svg {...common} fill="none">
-          <circle
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinejoin="round"
-          />
+        <svg {...common}>
+          <circle cx="12" cy="12" r="7.25" />
         </svg>
       )
     default:
@@ -77,59 +59,80 @@ function ModeGlyph({
   }
 }
 
+/**
+ * Top floating cluster: topic (custom menu) + geometry segmented control.
+ * Shares springs with the stage via LayoutGroup (`timelineModeSyncSpring`).
+ */
 export function TimelineModeToggle() {
   const timelineMode = useAppStore((s) => s.timelineMode)
   const reduceMotion = useReducedMotion()
 
   return (
     <div
-      className="pointer-events-auto fixed bottom-7 left-1/2 z-30 -translate-x-1/2 px-4"
+      className="pointer-events-none fixed left-0 right-0 top-0 z-30 flex justify-center px-3 sm:px-5"
       style={{
-        paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom, 0px))',
+        paddingTop: 'max(0.5rem, env(safe-area-inset-top, 0px))',
       }}
     >
       <div
         className={cn(
-          'relative isolate flex items-stretch rounded-lg border border-white/10',
-          'bg-black/55 p-0.5',
-          'shadow-[0_8px_28px_rgba(0,0,0,0.45)]',
+          'pointer-events-auto relative isolate flex items-center gap-0.5 rounded-full p-0.5 pl-1',
+          'backdrop-blur-md',
         )}
-        role="group"
+        style={{
+          backgroundColor: 'var(--shell-chrome-bg)',
+          borderColor: 'var(--shell-chrome-border)',
+          borderWidth: 1,
+          borderStyle: 'solid',
+          boxShadow: `
+            inset 0 1px 0 var(--shell-chrome-highlight),
+            0 10px 40px rgba(0,0,0,0.42),
+            0 1px 0 rgba(255,255,255,0.02)
+          `,
+        }}
+        role="toolbar"
+        aria-label="Timeline and topic"
       >
-        <span className="sr-only">Timeline layout mode</span>
-        {MODES.map(({ id, label }) => {
-          const active = timelineMode === id
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => timelineController.setLayoutMode(id)}
-              aria-pressed={active}
-              className={cn(
-                'relative z-10 flex min-w-11 items-center justify-center px-2 py-2',
-                'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/20',
-                active ? 'text-ink' : 'text-ink-faint/70',
-              )}
-            >
-              <span className="sr-only">{label}</span>
-              {active ? (
-                <motion.span
-                  layoutId="timeline-mode-segment"
-                  className="absolute inset-0.5 rounded-[6px] bg-white/[0.14]"
-                  transition={
-                    reduceMotion ? { duration: 0 } : timelineModeSyncSpring
-                  }
-                />
-              ) : null}
-              <span
-                className="relative flex items-center justify-center"
-                aria-hidden
+        <TopicSelector menuOpens="down" />
+        <div
+          className="mx-0.5 h-5 w-px shrink-0 bg-white/[0.07]"
+          aria-hidden
+        />
+        <div
+          className="flex items-center gap-0.5 pr-0.5"
+          role="group"
+          aria-label="Timeline geometry"
+        >
+          {MODES.map(({ id, ariaLabel }) => {
+            const active = timelineMode === id
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => timelineController.setLayoutMode(id)}
+                aria-pressed={active}
+                aria-label={ariaLabel}
+                className={cn(
+                  'relative z-10 flex h-9 w-9 items-center justify-center rounded-full sm:h-9 sm:w-10',
+                  'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/12',
+                )}
               >
-                <ModeGlyph mode={id} active={active} />
-              </span>
-            </button>
-          )
-        })}
+                {active ? (
+                  <motion.span
+                    layoutId="timeline-mode-segment"
+                    className="absolute inset-0 rounded-full bg-white/[0.08]"
+                    transition={
+                      reduceMotion ? { duration: 0 } : timelineModeSyncSpring
+                    }
+                  />
+                ) : null}
+                <span className="relative flex items-center justify-center">
+                  <ModeGlyph mode={id} active={active} />
+                </span>
+              </button>
+            )
+          })}
+        </div>
       </div>
     </div>
   )

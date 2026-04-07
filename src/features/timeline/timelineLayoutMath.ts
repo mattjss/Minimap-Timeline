@@ -2,6 +2,7 @@ import type { TimelineEvent, TimelineLayoutMode } from '../../types'
 import {
   importanceRadius,
   radialAngleForU,
+  radialSweep,
   radialTrackArcPath,
   radialTrackRadius,
   TIMELINE_VIEW,
@@ -14,10 +15,16 @@ const X0 = 58
 const X1 = W - 58
 const Y0 = 52
 const Y1 = H - 52
-const NODE_OFFSET = 32
+/** Perpendicular tick half-length (matches horizontal: ±8 on the cross axis). */
+const TICK_HALF = 8
 
 export type Point = { x: number; y: number }
 export type Segment = { x1: number; y1: number; x2: number; y2: number }
+
+export type ViewportBracket =
+  | { kind: 'linear'; segment: Segment }
+  | { kind: 'arc'; d: string }
+  | { kind: 'dot'; cx: number; cy: number }
 
 function paddedRange(tMin: number, tMax: number) {
   const span = tMax - tMin || 1
@@ -49,82 +56,148 @@ function distributeNodeX(
   return xs.map((x) => X0 + ((x - left) / span) * avail)
 }
 
-function timeToYRaw(dateStart: string, t0: number, t1: number): number {
-  const t = new Date(dateStart).getTime()
-  const u = t1 <= t0 ? 0.5 : (t - t0) / (t1 - t0)
-  const clamped = Math.min(1, Math.max(0, u))
-  return Y0 + clamped * (Y1 - Y0)
-}
-
-function distributeNodeY(
-  events: TimelineEvent[],
-  t0: number,
-  t1: number,
-): number[] {
-  const ys = events.map((e) => timeToYRaw(e.dateStart, t0, t1))
-  const minGap = 18
-  for (let i = 1; i < ys.length; i++) {
-    ys[i] = Math.max(ys[i]!, ys[i - 1]! + minGap)
-  }
-  const top = ys[0]!
-  const bottom = ys[ys.length - 1]!
-  const span = bottom - top || 1
-  const avail = Y1 - Y0
-  return ys.map((y) => Y0 + ((y - top) / span) * avail)
-}
-
-function layoutRadialCenters(
+/**
+ * Canonical normalized progress u ∈ [0, 1] for each event (same ordering as the scroll rail).
+ * Vertical and radial minimaps are pure remaps of this 1D parameter.
+ */
+export function canonicalEventProgress(
   events: TimelineEvent[],
   tMin: number,
   tMax: number,
-): Point[] {
-  const span = tMax - tMin || 1
-  let us = events.map((e) => {
-    const t = new Date(e.dateStart).getTime()
-    return (t - tMin) / span
-  })
-  const minStep = 0.042
-  for (let i = 1; i < us.length; i++) {
-    us[i] = Math.max(us[i]!, us[i - 1]! + minStep)
-  }
-  const maxU = us[us.length - 1]!
-  if (maxU > 1) {
-    us = us.map((u) => (u / maxU) * 0.98)
-  }
-  const TRACK_R = radialTrackRadius(W, H)
-  return events.map((_, i) => {
-    const angle = radialAngleForU(us[i]!)
-    return {
-      x: TIMELINE_CX + TRACK_R * Math.cos(angle),
-      y: TIMELINE_CY + TRACK_R * Math.sin(angle),
-    }
-  })
+): { t0: number; t1: number; u: number[] } {
+  const { t0, t1 } = paddedRange(tMin, tMax)
+  const xs = distributeNodeX(events, t0, t1)
+  const span = X1 - X0 || 1
+  const u = xs.map((x) => (x - X0) / span)
+  return { t0, t1, u }
 }
 
-function decadeTickXs(
-  t0: number,
-  t1: number,
-  yMin: number,
-  yMax: number,
-): { year: number; x: number }[] {
-  const start = Math.floor(yMin / 10) * 10
-  const out: { year: number; x: number }[] = []
-  for (let y = start; y <= yMax + 10; y += 10) {
-    if (y < yMin - 5) continue
-    const iso = `${y}-01-01`
-    out.push({ year: y, x: timeToXRaw(iso, t0, t1) })
+/** Horizontal minimap: u → position on the spine line. */
+export function minimapPointHorizontal(u: number): Point {
+  return { x: X0 + u * (X1 - X0), y: TIMELINE_CY }
+}
+
+/** Vertical minimap: u → position on the spine line. */
+export function minimapPointVertical(u: number): Point {
+  return { x: TIMELINE_CX, y: Y0 + u * (Y1 - Y0) }
+}
+
+/** Radial minimap: u → position on the circular track. */
+export function minimapPointRadial(u: number): Point {
+  const TRACK_R = radialTrackRadius(W, H)
+  const angle = radialAngleForU(u)
+  return {
+    x: TIMELINE_CX + TRACK_R * Math.cos(angle),
+    y: TIMELINE_CY + TRACK_R * Math.sin(angle),
   }
-  return out
+}
+
+function tickThroughCenterHorizontal(x: number): Segment {
+  return {
+    x1: x,
+    y1: TIMELINE_CY - TICK_HALF,
+    x2: x,
+    y2: TIMELINE_CY + TICK_HALF,
+  }
+}
+
+function tickThroughCenterVertical(y: number): Segment {
+  return {
+    x1: TIMELINE_CX - TICK_HALF,
+    y1: y,
+    x2: TIMELINE_CX + TICK_HALF,
+    y2: y,
+  }
+}
+
+function tickRadialTowardNode(
+  c: Point,
+  e: TimelineEvent,
+  TRACK_R: number,
+): Segment {
+  const br = importanceRadius(e.importance)
+  const angle = Math.atan2(c.y - TIMELINE_CY, c.x - TIMELINE_CX)
+  const ux = Math.cos(angle)
+  const uy = Math.sin(angle)
+  return {
+    x1: TIMELINE_CX + (TRACK_R - 9) * ux,
+    y1: TIMELINE_CY + (TRACK_R - 9) * uy,
+    x2: c.x + ux * (br + 1),
+    y2: c.y + uy * (br + 1),
+  }
+}
+
+/**
+ * Visible span on the minimap: linear segment, circular arc along u, or a dot when one card dominates.
+ */
+export function computeViewportBracket(
+  mode: TimelineLayoutMode,
+  startIndex: number,
+  endIndex: number,
+  centers: Point[],
+  u: number[],
+): ViewportBracket | null {
+  if (centers.length === 0 || u.length === 0) return null
+  let i0 = Math.min(startIndex, endIndex)
+  let i1 = Math.max(startIndex, endIndex)
+  i0 = Math.max(0, Math.min(i0, centers.length - 1))
+  i1 = Math.max(0, Math.min(i1, centers.length - 1))
+
+  if (i0 === i1) {
+    const c = centers[i0]!
+    return { kind: 'dot', cx: c.x, cy: c.y }
+  }
+
+  if (mode === 'horizontal') {
+    const c0 = centers[i0]!
+    const c1 = centers[i1]!
+    return {
+      kind: 'linear',
+      segment: {
+        x1: c0.x,
+        y1: TIMELINE_CY,
+        x2: c1.x,
+        y2: TIMELINE_CY,
+      },
+    }
+  }
+
+  if (mode === 'vertical') {
+    const c0 = centers[i0]!
+    const c1 = centers[i1]!
+    return {
+      kind: 'linear',
+      segment: {
+        x1: TIMELINE_CX,
+        y1: c0.y,
+        x2: TIMELINE_CX,
+        y2: c1.y,
+      },
+    }
+  }
+
+  const TRACK_R = radialTrackRadius(W, H) - 11
+  const a0 = radialAngleForU(u[i0]!)
+  const a1 = radialAngleForU(u[i1]!)
+  const spanAngle = (u[i1]! - u[i0]!) * radialSweep()
+  const x0 = TIMELINE_CX + TRACK_R * Math.cos(a0)
+  const y0 = TIMELINE_CY + TRACK_R * Math.sin(a0)
+  const x1 = TIMELINE_CX + TRACK_R * Math.cos(a1)
+  const y1 = TIMELINE_CY + TRACK_R * Math.sin(a1)
+  const largeArc = Math.abs(spanAngle) > Math.PI ? 1 : 0
+  const d = `M ${x0} ${y0} A ${TRACK_R} ${TRACK_R} 0 ${largeArc} 1 ${x1} ${y1}`
+  return { kind: 'arc', d }
 }
 
 export type ComputedSceneLayout = {
+  /** Normalized chronology parameter per event (shared across minimap modes). */
+  u: number[]
   nodeCenters: Point[]
   nodeTicks: Segment[]
   /** Horizontal / vertical primary guide (line spine). */
   spineLine: Segment
   /** Radial arc `d`; opacity handled in view. */
   spineArcD: string
-  decadeTicks: { year: number; x: number }[]
 }
 
 export function computeSceneLayout(
@@ -133,84 +206,54 @@ export function computeSceneLayout(
   tMin: number,
   tMax: number,
 ): ComputedSceneLayout {
-  const { t0, t1 } = paddedRange(tMin, tMax)
-  const years = events.map((e) => e.year)
-  const yMin = years.length ? Math.min(...years) : 0
-  const yMax = years.length ? Math.max(...years) : 0
-  const decadeTicks = decadeTickXs(t0, t1, yMin, yMax)
+  const { u } = canonicalEventProgress(events, tMin, tMax)
   const TRACK_R = radialTrackRadius(W, H)
 
   const nodeCenters: Point[] = []
   const nodeTicks: Segment[] = []
 
   if (mode === 'horizontal') {
-    const xs = distributeNodeX(events, t0, t1)
     events.forEach((_e, i) => {
-      const x = xs[i]!
-      nodeCenters.push({ x, y: TIMELINE_CY })
-      nodeTicks.push({
-        x1: x,
-        y1: TIMELINE_CY - 8,
-        x2: x,
-        y2: TIMELINE_CY + 8,
-      })
+      const { x, y } = minimapPointHorizontal(u[i]!)
+      nodeCenters.push({ x, y })
+      nodeTicks.push(tickThroughCenterHorizontal(x))
     })
     return {
+      u,
       nodeCenters,
       nodeTicks,
       spineLine: { x1: X0, y1: TIMELINE_CY, x2: X1, y2: TIMELINE_CY },
       spineArcD: radialTrackArcPath(W, H),
-      decadeTicks,
     }
   }
 
   if (mode === 'vertical') {
-    const ys = distributeNodeY(events, t0, t1)
-    events.forEach((e, i) => {
-      const y = ys[i]!
-      const sideRight = i % 2 === 0
-      const nx = sideRight ? TIMELINE_CX + NODE_OFFSET : TIMELINE_CX - NODE_OFFSET
-      const br = importanceRadius(e.importance)
-      const tickEnd = sideRight ? nx - br - 2 : nx + br + 2
-      nodeCenters.push({ x: nx, y })
-      nodeTicks.push({
-        x1: TIMELINE_CX,
-        y1: y,
-        x2: tickEnd,
-        y2: y,
-      })
+    events.forEach((_e, i) => {
+      const { x, y } = minimapPointVertical(u[i]!)
+      nodeCenters.push({ x, y })
+      nodeTicks.push(tickThroughCenterVertical(y))
     })
     return {
+      u,
       nodeCenters,
       nodeTicks,
       spineLine: { x1: TIMELINE_CX, y1: Y0, x2: TIMELINE_CX, y2: Y1 },
       spineArcD: radialTrackArcPath(W, H),
-      decadeTicks,
     }
   }
 
-  // radial
-  const centers = layoutRadialCenters(events, tMin, tMax)
-  centers.forEach((c, i) => {
-    const e = events[i]!
-    const br = importanceRadius(e.importance)
-    const angle = Math.atan2(c.y - TIMELINE_CY, c.x - TIMELINE_CX)
-    const ux = Math.cos(angle)
-    const uy = Math.sin(angle)
+  events.forEach((e, i) => {
+    const c = minimapPointRadial(u[i]!)
     nodeCenters.push(c)
-    nodeTicks.push({
-      x1: TIMELINE_CX + (TRACK_R - 9) * ux,
-      y1: TIMELINE_CY + (TRACK_R - 9) * uy,
-      x2: c.x + ux * (br + 1),
-      y2: c.y + uy * (br + 1),
-    })
+    nodeTicks.push(tickRadialTowardNode(c, e, TRACK_R))
   })
+
   return {
+    u,
     nodeCenters,
     nodeTicks,
     spineLine: { x1: X0, y1: TIMELINE_CY, x2: X1, y2: TIMELINE_CY },
     spineArcD: radialTrackArcPath(W, H),
-    decadeTicks,
   }
 }
 

@@ -1,21 +1,38 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo } from 'react'
-import { getSortedSfGiantsEvents } from '../../data/seeds/sfGiants'
+import { getSortedEventsForTopic } from '../../data/topicEvents'
+import { useMediaQuery } from '../../hooks/useMediaQuery'
 import { motionTransition } from '../../lib/motion'
 import { cn } from '../../lib/utils'
 import { useAppStore } from '../../store/useAppStore'
 import type { TimelineEvent, TimelineMediaItem } from '../../types'
+
+const MD_UP = '(min-width: 768px)'
 
 function MediaHero({ media }: { media: TimelineMediaItem[] }) {
   const first = media[0]
   if (first?.type === 'video') {
     return (
       <div
-        className="flex aspect-video w-full items-center justify-center rounded-md border border-white/10 bg-canvas-raised/80 text-[10px] tracking-wide text-ink-muted"
+        className="flex aspect-video w-full items-center justify-center rounded-md border border-white/[0.08] bg-black/35"
         role="img"
-        aria-label={first.alt ?? 'Video placeholder'}
+        aria-label={first.alt ?? 'Video'}
       >
-        Video placeholder
+        <svg
+          width="28"
+          height="28"
+          viewBox="0 0 24 24"
+          fill="none"
+          className="text-ink-faint/50"
+          aria-hidden
+        >
+          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.2" />
+          <path
+            d="M10.5 8.5v7L16 12l-5.5-3.5z"
+            fill="currentColor"
+            fillOpacity="0.35"
+          />
+        </svg>
       </div>
     )
   }
@@ -40,11 +57,7 @@ function MediaHero({ media }: { media: TimelineMediaItem[] }) {
 function GalleryStrip({ items }: { items: TimelineMediaItem[] }) {
   const rest = items.slice(1)
   if (rest.length === 0) {
-    return (
-      <p className="text-[10px] text-ink-faint/80">
-        Gallery — placeholders until media URLs are wired.
-      </p>
-    )
+    return null
   }
   return (
     <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -75,11 +88,13 @@ export function EventDetailModal() {
   const selectedId = useAppStore((s) => s.horizontalSelectedEventId)
   const dismiss = useAppStore((s) => s.dismissTimelineInteraction)
   const topicId = useAppStore((s) => s.activeTopicId)
+  const isDesktop = useMediaQuery(MD_UP)
 
   const event = useMemo((): TimelineEvent | null => {
-    const giants = topicId === 'sf-giants' || topicId === null
-    if (!giants || !selectedId || !open) return null
-    return getSortedSfGiantsEvents().find((e) => e.id === selectedId) ?? null
+    if (!selectedId || !open) return null
+    return (
+      getSortedEventsForTopic(topicId).find((e) => e.id === selectedId) ?? null
+    )
   }, [open, selectedId, topicId])
 
   useEffect(() => {
@@ -93,13 +108,30 @@ export function EventDetailModal() {
 
   const bodyText = event?.description ?? event?.summary ?? ''
 
+  const sheetSpring = {
+    type: 'spring' as const,
+    stiffness: 420,
+    damping: 38,
+    mass: 0.88,
+  }
+
+  const drawerSpring = {
+    type: 'spring' as const,
+    stiffness: 320,
+    damping: 36,
+    mass: 0.85,
+  }
+
   return (
     <AnimatePresence>
       {open && event ? (
         <motion.div
           key="event-detail"
           role="presentation"
-          className="fixed inset-0 z-50 flex justify-end"
+          className={cn(
+            'fixed inset-0 z-50 flex max-w-[100vw]',
+            isDesktop ? 'justify-end' : 'items-end',
+          )}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -108,38 +140,61 @@ export function EventDetailModal() {
           <button
             type="button"
             aria-label="Close event detail"
-            className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-black/50"
             onClick={() => dismiss()}
           />
           <motion.aside
             role="dialog"
             aria-modal="true"
             aria-labelledby="event-detail-title"
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'spring', stiffness: 320, damping: 36, mass: 0.85 }}
+            initial={
+              isDesktop
+                ? { x: '100%', y: 0 }
+                : { x: 0, y: '100%' }
+            }
+            animate={{ x: 0, y: 0 }}
+            exit={
+              isDesktop
+                ? { x: '100%', y: 0 }
+                : { x: 0, y: '100%' }
+            }
+            transition={isDesktop ? drawerSpring : sheetSpring}
             className={cn(
-              'relative z-[1] flex h-full max-h-dvh w-full max-w-[min(26rem,100vw)] flex-col',
-              'border-l border-white/10 bg-canvas shadow-[-12px_0_48px_rgba(0,0,0,0.45)]',
+              'relative z-[1] flex w-full flex-col bg-canvas shadow-[0_-24px_80px_rgba(0,0,0,0.55)]',
+              'max-h-[min(88dvh,100%)] rounded-t-[1.25rem] border-t border-white/[0.08]',
+              'md:h-full md:max-h-dvh md:max-w-[min(26rem,100vw)] md:rounded-none md:border-l md:border-t-0',
+              'md:shadow-[-20px_0_80px_rgba(0,0,0,0.55)]',
             )}
           >
-            <div className="flex items-start justify-between gap-3 border-b border-white/10 px-5 py-4">
+            {/* Bottom-sheet affordance (mobile) */}
+            <div
+              className="mx-auto mt-2 h-1 w-9 shrink-0 rounded-full bg-white/15 md:hidden"
+              aria-hidden
+            />
+            <div className="flex items-start justify-between gap-3 border-b border-white/[0.08] px-5 py-3.5">
               <div className="min-w-0 flex-1">
-                <p className="text-[9px] font-medium tracking-[0.16em] text-ink-muted">
-                  {event.year} · {event.category}
+                <p className="text-[9px] font-normal uppercase tracking-[0.2em] text-ink-faint/80">
+                  {event.year}
+                  <span className="text-ink-faint/40"> · </span>
+                  {event.category}
+                  {event.subtype ? (
+                    <>
+                      <span className="text-ink-faint/40"> · </span>
+                      <span className="text-ink-faint/65">{event.subtype}</span>
+                    </>
+                  ) : null}
                 </p>
-                <h2
+                <p
                   id="event-detail-title"
-                  className="mt-1 text-[15px] font-medium leading-snug tracking-wide text-ink"
+                  className="mt-1.5 text-[13px] font-medium leading-snug tracking-wide text-ink/92"
                 >
                   {event.title}
-                </h2>
+                </p>
               </div>
               <button
                 type="button"
                 onClick={() => dismiss()}
-                className="shrink-0 rounded-md border border-white/12 px-2.5 py-1 text-[10px] tracking-wide text-ink-muted transition-colors hover:border-white/20 hover:text-ink"
+                className="shrink-0 rounded-full border border-white/[0.1] px-3 py-1 text-[9px] font-medium uppercase tracking-[0.14em] text-ink-muted/90 transition-colors hover:border-white/16 hover:text-ink/88"
               >
                 Close
               </button>
@@ -150,18 +205,82 @@ export function EventDetailModal() {
                 <MediaHero media={event.media} />
               </section>
 
-              <section className="mt-6 space-y-2" aria-label="Summary">
-                <h3 className="text-[10px] font-medium tracking-[0.14em] text-ink-muted">
+              <section className="mt-5 space-y-2" aria-label="Summary">
+                <div className="text-[9px] font-normal uppercase tracking-[0.2em] text-ink-faint/65">
                   Overview
-                </h3>
-                <p className="text-[12px] leading-relaxed text-ink/88">{bodyText}</p>
+                </div>
+                <p className="text-[11px] font-normal leading-relaxed text-ink/84">
+                  {bodyText}
+                </p>
               </section>
 
+              {event.platformGeneration ||
+              event.products?.length ||
+              event.notableGames?.length ||
+              event.publisher ||
+              event.studio ? (
+                <section className="mt-5 space-y-2" aria-label="Platform and releases">
+                  <div className="text-[9px] font-normal uppercase tracking-[0.2em] text-ink-faint/65">
+                    Platform & releases
+                  </div>
+                  <dl className="space-y-2 text-[11px] text-ink/85">
+                    {event.platformGeneration ? (
+                      <div className="flex flex-col gap-0.5 border-b border-white/[0.06] pb-2">
+                        <dt className="text-[9px] uppercase tracking-[0.12em] text-ink-faint">
+                          Generation
+                        </dt>
+                        <dd>{event.platformGeneration}</dd>
+                      </div>
+                    ) : null}
+                    {event.products && event.products.length > 0 ? (
+                      <div className="flex flex-col gap-0.5 border-b border-white/[0.06] pb-2">
+                        <dt className="text-[9px] uppercase tracking-[0.12em] text-ink-faint">
+                          Products
+                        </dt>
+                        <dd>{event.products.join(' · ')}</dd>
+                      </div>
+                    ) : null}
+                    {event.notableGames && event.notableGames.length > 0 ? (
+                      <div className="flex flex-col gap-0.5 border-b border-white/[0.06] pb-2">
+                        <dt className="text-[9px] uppercase tracking-[0.12em] text-ink-faint">
+                          {event.subtype === 'year-top-games'
+                            ? 'Year standouts'
+                            : 'Notable games'}
+                        </dt>
+                        <dd>
+                          <ol className="mt-1 list-decimal space-y-1 pl-4">
+                            {event.notableGames.map((g) => (
+                              <li key={g}>{g}</li>
+                            ))}
+                          </ol>
+                        </dd>
+                      </div>
+                    ) : null}
+                    {event.publisher ? (
+                      <div className="flex flex-col gap-0.5 border-b border-white/[0.06] pb-2">
+                        <dt className="text-[9px] uppercase tracking-[0.12em] text-ink-faint">
+                          Publisher
+                        </dt>
+                        <dd>{event.publisher}</dd>
+                      </div>
+                    ) : null}
+                    {event.studio ? (
+                      <div className="flex flex-col gap-0.5 pb-2">
+                        <dt className="text-[9px] uppercase tracking-[0.12em] text-ink-faint">
+                          Studio
+                        </dt>
+                        <dd>{event.studio}</dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                </section>
+              ) : null}
+
               {event.facts.length > 0 ? (
-                <section className="mt-6 space-y-2" aria-label="Key facts">
-                  <h3 className="text-[10px] font-medium tracking-[0.14em] text-ink-muted">
+                <section className="mt-5 space-y-2" aria-label="Key facts">
+                  <div className="text-[9px] font-normal uppercase tracking-[0.2em] text-ink-faint/65">
                     Key facts
-                  </h3>
+                  </div>
                   <dl className="space-y-2">
                     {event.facts.map((f) => (
                       <div
@@ -178,18 +297,20 @@ export function EventDetailModal() {
                 </section>
               ) : null}
 
-              <section className="mt-6 space-y-2" aria-label="Media gallery">
-                <h3 className="text-[10px] font-medium tracking-[0.14em] text-ink-muted">
-                  Gallery
-                </h3>
-                <GalleryStrip items={event.media} />
-              </section>
+              {event.media.length > 1 ? (
+                <section className="mt-5 space-y-2" aria-label="Media gallery">
+                  <div className="text-[9px] font-normal uppercase tracking-[0.2em] text-ink-faint/65">
+                    Gallery
+                  </div>
+                  <GalleryStrip items={event.media} />
+                </section>
+              ) : null}
 
               {event.sources.length > 0 ? (
-                <section className="mt-6 space-y-2" aria-label="Sources">
-                  <h3 className="text-[10px] font-medium tracking-[0.14em] text-ink-muted">
+                <section className="mt-5 space-y-2" aria-label="Sources">
+                  <div className="text-[9px] font-normal uppercase tracking-[0.2em] text-ink-faint/65">
                     Sources
-                  </h3>
+                  </div>
                   <ul className="space-y-1.5">
                     {event.sources.map((s, i) => (
                       <li key={`${s.title}-${i}`} className="text-[11px]">
@@ -212,10 +333,10 @@ export function EventDetailModal() {
               ) : null}
 
               {event.related.length > 0 ? (
-                <section className="mt-6 space-y-2" aria-label="Related">
-                  <h3 className="text-[10px] font-medium tracking-[0.14em] text-ink-muted">
+                <section className="mt-5 space-y-2" aria-label="Related">
+                  <div className="text-[9px] font-normal uppercase tracking-[0.2em] text-ink-faint/65">
                     Related
-                  </h3>
+                  </div>
                   <ul className="flex flex-wrap gap-1.5">
                     {event.related.map((r, i) => (
                       <li key={`${r.kind}-${r.label}-${i}`}>
@@ -228,6 +349,11 @@ export function EventDetailModal() {
                   </ul>
                 </section>
               ) : null}
+
+              <div
+                className="pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden"
+                aria-hidden
+              />
             </div>
           </motion.aside>
         </motion.div>
