@@ -1,6 +1,5 @@
 import type { TimelineEvent, TimelineLayoutMode } from '../../types'
 import {
-  importanceRadius,
   radialAngleForU,
   radialSweep,
   radialTrackArcPath,
@@ -45,7 +44,7 @@ function distributeNodeX(
   t1: number,
 ): number[] {
   const xs = events.map((e) => timeToXRaw(e.dateStart, t0, t1))
-  const minGap = 22
+  const minGap = 26
   for (let i = 1; i < xs.length; i++) {
     xs[i] = Math.max(xs[i]!, xs[i - 1]! + minGap)
   }
@@ -110,20 +109,17 @@ function tickThroughCenterVertical(y: number): Segment {
   }
 }
 
-function tickRadialTowardNode(
-  c: Point,
-  e: TimelineEvent,
-  TRACK_R: number,
-): Segment {
-  const br = importanceRadius(e.importance)
+/** Short hash perpendicular to radius at the mark — same grammar as H/V ticks, not a center spoke. */
+function tickRadialPerpendicular(c: Point): Segment {
   const angle = Math.atan2(c.y - TIMELINE_CY, c.x - TIMELINE_CX)
-  const ux = Math.cos(angle)
-  const uy = Math.sin(angle)
+  const tx = -Math.sin(angle)
+  const ty = Math.cos(angle)
+  const half = TICK_HALF * 0.92
   return {
-    x1: TIMELINE_CX + (TRACK_R - 9) * ux,
-    y1: TIMELINE_CY + (TRACK_R - 9) * uy,
-    x2: c.x + ux * (br + 1),
-    y2: c.y + uy * (br + 1),
+    x1: c.x - tx * half,
+    y1: c.y - ty * half,
+    x2: c.x + tx * half,
+    y2: c.y + ty * half,
   }
 }
 
@@ -207,7 +203,6 @@ export function computeSceneLayout(
   tMax: number,
 ): ComputedSceneLayout {
   const { u } = canonicalEventProgress(events, tMin, tMax)
-  const TRACK_R = radialTrackRadius(W, H)
 
   const nodeCenters: Point[] = []
   const nodeTicks: Segment[] = []
@@ -242,10 +237,10 @@ export function computeSceneLayout(
     }
   }
 
-  events.forEach((e, i) => {
+  events.forEach((_e, i) => {
     const c = minimapPointRadial(u[i]!)
     nodeCenters.push(c)
-    nodeTicks.push(tickRadialTowardNode(c, e, TRACK_R))
+    nodeTicks.push(tickRadialPerpendicular(c))
   })
 
   return {

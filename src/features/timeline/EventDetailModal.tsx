@@ -11,10 +11,23 @@ const MD_UP = '(min-width: 768px)'
 
 function MediaHero({ media }: { media: TimelineMediaItem[] }) {
   const first = media[0]
+  if (first?.type === 'video' && first.url) {
+    return (
+      <video
+        className="aspect-video w-full border-b border-white/[0.06] object-cover"
+        controls
+        muted
+        playsInline
+        preload="metadata"
+        src={first.url}
+        aria-label={first.alt ?? 'Video'}
+      />
+    )
+  }
   if (first?.type === 'video') {
     return (
       <div
-        className="flex aspect-video w-full items-center justify-center rounded-md border border-white/[0.08] bg-black/35"
+        className="flex aspect-video w-full items-center justify-center border-b border-white/[0.06] bg-black/40"
         role="img"
         aria-label={first.alt ?? 'Video'}
       >
@@ -23,7 +36,7 @@ function MediaHero({ media }: { media: TimelineMediaItem[] }) {
           height="28"
           viewBox="0 0 24 24"
           fill="none"
-          className="text-ink-faint/50"
+          className="text-ink-faint/45"
           aria-hidden
         >
           <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.2" />
@@ -41,15 +54,15 @@ function MediaHero({ media }: { media: TimelineMediaItem[] }) {
       <img
         src={first.url}
         alt={first.alt ?? ''}
-        className="aspect-video w-full rounded-md border border-white/10 object-cover"
+        className="aspect-video w-full border-b border-white/[0.06] object-cover"
       />
     )
   }
   return (
     <div
-      className="aspect-video w-full rounded-md border border-white/10 bg-gradient-to-br from-white/[0.06] to-transparent"
+      className="aspect-video w-full border-b border-white/[0.06] bg-gradient-to-br from-white/[0.05] to-transparent"
       role="img"
-      aria-label={first?.alt ?? 'Image placeholder'}
+      aria-label={first?.alt ?? 'Media'}
     />
   )
 }
@@ -60,26 +73,52 @@ function GalleryStrip({ items }: { items: TimelineMediaItem[] }) {
     return null
   }
   return (
-    <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+    <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
       {rest.map((m) => (
         <li
           key={m.id}
-          className="aspect-video rounded border border-white/8 bg-white/[0.04]"
+          className="aspect-video overflow-hidden rounded-md border border-white/[0.06] bg-white/[0.03]"
         >
-          {m.url ? (
+          {m.type === 'video' && m.url ? (
+            <video
+              className="h-full w-full object-cover"
+              muted
+              playsInline
+              preload="metadata"
+              src={m.url}
+              aria-label={m.alt ?? ''}
+            />
+          ) : m.url ? (
             <img
               src={m.url}
               alt={m.alt ?? ''}
-              className="h-full w-full rounded object-cover"
+              className="h-full w-full object-cover"
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-[9px] text-ink-faint/70">
+            <div className="flex h-full items-center justify-center text-[9px] text-ink-faint/60">
               {m.type === 'video' ? 'Video' : 'Image'}
             </div>
           )}
         </li>
       ))}
     </ul>
+  )
+}
+
+function CloseIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
   )
 }
 
@@ -97,6 +136,24 @@ export function EventDetailModal() {
     )
   }, [open, selectedId, topicId])
 
+  const displayFacts = useMemo(() => {
+    if (!event) return []
+    const s = event.summary.trim()
+    return event.facts.filter(
+      (f) => !(f.label === 'Snapshot' && f.value.trim() === s),
+    )
+  }, [event])
+
+  const narrative = useMemo(() => {
+    if (!event) return { lead: null as string | null, body: '' }
+    const summary = event.summary.trim()
+    const desc = event.description?.trim() ?? ''
+    if (desc && desc !== summary) {
+      return { lead: summary, body: desc }
+    }
+    return { lead: null, body: desc || summary }
+  }, [event])
+
   useEffect(() => {
     if (!open) return
     const prev = document.body.style.overflow
@@ -105,8 +162,6 @@ export function EventDetailModal() {
       document.body.style.overflow = prev
     }
   }, [open])
-
-  const bodyText = event?.description ?? event?.summary ?? ''
 
   const sheetSpring = {
     type: 'spring' as const,
@@ -121,6 +176,16 @@ export function EventDetailModal() {
     damping: 36,
     mass: 0.85,
   }
+
+  const hasPlatformBlock =
+    Boolean(
+      event &&
+        (event.platformGeneration ||
+          event.products?.length ||
+          event.notableGames?.length ||
+          event.publisher ||
+          event.studio),
+    )
 
   return (
     <AnimatePresence>
@@ -140,7 +205,7 @@ export function EventDetailModal() {
           <button
             type="button"
             aria-label="Close event detail"
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 bg-black/55"
             onClick={() => dismiss()}
           />
           <motion.aside
@@ -160,95 +225,84 @@ export function EventDetailModal() {
             }
             transition={isDesktop ? drawerSpring : sheetSpring}
             className={cn(
-              'relative z-[1] flex w-full flex-col bg-canvas shadow-[0_-24px_80px_rgba(0,0,0,0.55)]',
-              'max-h-[min(88dvh,100%)] rounded-t-[1.25rem] border-t border-white/[0.08]',
-              'md:h-full md:max-h-dvh md:max-w-[min(26rem,100vw)] md:rounded-none md:border-l md:border-t-0',
-              'md:shadow-[-20px_0_80px_rgba(0,0,0,0.55)]',
+              'relative z-[1] flex w-full flex-col bg-canvas',
+              'max-h-[min(90dvh,100%)] overflow-hidden rounded-t-[1rem] border-t border-white/[0.07]',
+              'md:h-full md:max-h-dvh md:max-w-[min(24rem,100vw)] md:rounded-none md:border-l md:border-t-0',
+              'shadow-[0_-16px_64px_rgba(0,0,0,0.5)] md:shadow-[-16px_0_64px_rgba(0,0,0,0.5)]',
             )}
           >
-            {/* Bottom-sheet affordance (mobile) */}
-            <div
-              className="mx-auto mt-2 h-1 w-9 shrink-0 rounded-full bg-white/15 md:hidden"
-              aria-hidden
-            />
-            <div className="flex items-start justify-between gap-3 border-b border-white/[0.08] px-5 py-3.5">
-              <div className="min-w-0 flex-1">
-                <p className="text-[9px] font-normal uppercase tracking-[0.2em] text-ink-faint/80">
-                  {event.year}
-                  <span className="text-ink-faint/40"> · </span>
-                  {event.category}
-                  {event.subtype ? (
-                    <>
-                      <span className="text-ink-faint/40"> · </span>
-                      <span className="text-ink-faint/65">{event.subtype}</span>
-                    </>
-                  ) : null}
-                </p>
-                <p
-                  id="event-detail-title"
-                  className="mt-1.5 text-[13px] font-medium leading-snug tracking-wide text-ink/92"
-                >
-                  {event.title}
-                </p>
-              </div>
+            <div className="mx-auto mt-2 h-1 w-9 shrink-0 rounded-full bg-white/12 md:hidden" aria-hidden />
+
+            <div className="relative shrink-0">
               <button
                 type="button"
                 onClick={() => dismiss()}
-                className="shrink-0 rounded-full border border-white/[0.1] px-3 py-1 text-[9px] font-medium uppercase tracking-[0.14em] text-ink-muted/90 transition-colors hover:border-white/16 hover:text-ink/88"
+                aria-label="Close"
+                className={cn(
+                  'absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full',
+                  'border border-white/[0.08] bg-black/40 text-ink-muted backdrop-blur-sm',
+                  'transition-colors hover:border-white/14 hover:text-ink/90',
+                )}
               >
-                Close
+                <CloseIcon />
               </button>
+              <MediaHero media={event.media} />
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4">
-              <section className="space-y-2" aria-label="Hero media">
-                <MediaHero media={event.media} />
-              </section>
-
-              <section className="mt-5 space-y-2" aria-label="Summary">
-                <div className="text-[9px] font-normal uppercase tracking-[0.2em] text-ink-faint/65">
-                  Overview
-                </div>
-                <p className="text-[11px] font-normal leading-relaxed text-ink/84">
-                  {bodyText}
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6 pt-4">
+              <header className="space-y-1">
+                <h2
+                  id="event-detail-title"
+                  className="pr-10 text-[14px] font-medium leading-snug tracking-wide text-ink/94"
+                >
+                  {event.title}
+                </h2>
+                <p className="text-[10px] font-normal tracking-wide text-ink-muted/88">
+                  {event.year}
+                  {event.category ? ` · ${event.category}` : ''}
+                  {event.subtype ? (
+                    <span className="text-ink-faint/75"> · {event.subtype}</span>
+                  ) : null}
                 </p>
-              </section>
+              </header>
 
-              {event.platformGeneration ||
-              event.products?.length ||
-              event.notableGames?.length ||
-              event.publisher ||
-              event.studio ? (
-                <section className="mt-5 space-y-2" aria-label="Platform and releases">
-                  <div className="text-[9px] font-normal uppercase tracking-[0.2em] text-ink-faint/65">
-                    Platform & releases
-                  </div>
-                  <dl className="space-y-2 text-[11px] text-ink/85">
+              {narrative.body ? (
+                <div className="mt-4 space-y-2">
+                  {narrative.lead ? (
+                    <p className="text-[10px] leading-relaxed text-ink-muted/82">
+                      {narrative.lead}
+                    </p>
+                  ) : null}
+                  <p className="text-[11px] leading-relaxed text-ink/86">
+                    {narrative.body}
+                  </p>
+                </div>
+              ) : null}
+
+              {hasPlatformBlock ? (
+                <section className="mt-5 space-y-2" aria-label="Context">
+                  <dl className="space-y-2.5 text-[11px] text-ink/84">
                     {event.platformGeneration ? (
-                      <div className="flex flex-col gap-0.5 border-b border-white/[0.06] pb-2">
-                        <dt className="text-[9px] uppercase tracking-[0.12em] text-ink-faint">
-                          Generation
-                        </dt>
+                      <div className="flex flex-col gap-0.5">
+                        <dt className="text-[9px] text-ink-faint/80">Generation</dt>
                         <dd>{event.platformGeneration}</dd>
                       </div>
                     ) : null}
                     {event.products && event.products.length > 0 ? (
-                      <div className="flex flex-col gap-0.5 border-b border-white/[0.06] pb-2">
-                        <dt className="text-[9px] uppercase tracking-[0.12em] text-ink-faint">
-                          Products
-                        </dt>
+                      <div className="flex flex-col gap-0.5">
+                        <dt className="text-[9px] text-ink-faint/80">Products</dt>
                         <dd>{event.products.join(' · ')}</dd>
                       </div>
                     ) : null}
                     {event.notableGames && event.notableGames.length > 0 ? (
-                      <div className="flex flex-col gap-0.5 border-b border-white/[0.06] pb-2">
-                        <dt className="text-[9px] uppercase tracking-[0.12em] text-ink-faint">
+                      <div className="flex flex-col gap-0.5">
+                        <dt className="text-[9px] text-ink-faint/80">
                           {event.subtype === 'year-top-games'
-                            ? 'Year standouts'
-                            : 'Notable games'}
+                            ? 'Standouts'
+                            : 'Notable'}
                         </dt>
                         <dd>
-                          <ol className="mt-1 list-decimal space-y-1 pl-4">
+                          <ol className="mt-0.5 list-decimal space-y-0.5 pl-3.5">
                             {event.notableGames.map((g) => (
                               <li key={g}>{g}</li>
                             ))}
@@ -257,18 +311,14 @@ export function EventDetailModal() {
                       </div>
                     ) : null}
                     {event.publisher ? (
-                      <div className="flex flex-col gap-0.5 border-b border-white/[0.06] pb-2">
-                        <dt className="text-[9px] uppercase tracking-[0.12em] text-ink-faint">
-                          Publisher
-                        </dt>
+                      <div className="flex flex-col gap-0.5">
+                        <dt className="text-[9px] text-ink-faint/80">Publisher</dt>
                         <dd>{event.publisher}</dd>
                       </div>
                     ) : null}
                     {event.studio ? (
-                      <div className="flex flex-col gap-0.5 pb-2">
-                        <dt className="text-[9px] uppercase tracking-[0.12em] text-ink-faint">
-                          Studio
-                        </dt>
+                      <div className="flex flex-col gap-0.5">
+                        <dt className="text-[9px] text-ink-faint/80">Studio</dt>
                         <dd>{event.studio}</dd>
                       </div>
                     ) : null}
@@ -276,21 +326,15 @@ export function EventDetailModal() {
                 </section>
               ) : null}
 
-              {event.facts.length > 0 ? (
-                <section className="mt-5 space-y-2" aria-label="Key facts">
-                  <div className="text-[9px] font-normal uppercase tracking-[0.2em] text-ink-faint/65">
-                    Key facts
-                  </div>
-                  <dl className="space-y-2">
-                    {event.facts.map((f) => (
-                      <div
-                        key={`${f.label}-${f.value}`}
-                        className="flex flex-col gap-0.5 border-b border-white/[0.06] pb-2 last:border-0"
-                      >
-                        <dt className="text-[9px] uppercase tracking-[0.12em] text-ink-faint">
-                          {f.label}
-                        </dt>
-                        <dd className="text-[11px] text-ink/90">{f.value}</dd>
+              {displayFacts.length > 0 ? (
+                <section className="mt-5" aria-label="Facts">
+                  <dl className="grid gap-x-4 gap-y-3 md:grid-cols-2">
+                    {displayFacts.map((f) => (
+                      <div key={`${f.label}-${f.value}`} className="min-w-0">
+                        <dt className="text-[9px] text-ink-faint/75">{f.label}</dt>
+                        <dd className="mt-0.5 text-[11px] leading-snug text-ink/88">
+                          {f.value}
+                        </dd>
                       </div>
                     ))}
                   </dl>
@@ -298,50 +342,18 @@ export function EventDetailModal() {
               ) : null}
 
               {event.media.length > 1 ? (
-                <section className="mt-5 space-y-2" aria-label="Media gallery">
-                  <div className="text-[9px] font-normal uppercase tracking-[0.2em] text-ink-faint/65">
-                    Gallery
-                  </div>
+                <section className="mt-5 space-y-2" aria-label="More media">
                   <GalleryStrip items={event.media} />
                 </section>
               ) : null}
 
-              {event.sources.length > 0 ? (
-                <section className="mt-5 space-y-2" aria-label="Sources">
-                  <div className="text-[9px] font-normal uppercase tracking-[0.2em] text-ink-faint/65">
-                    Sources
-                  </div>
-                  <ul className="space-y-1.5">
-                    {event.sources.map((s, i) => (
-                      <li key={`${s.title}-${i}`} className="text-[11px]">
-                        {s.url ? (
-                          <a
-                            href={s.url}
-                            className="text-accent underline-offset-2 hover:underline"
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            {s.title}
-                          </a>
-                        ) : (
-                          <span className="text-ink-muted">{s.title}</span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              ) : null}
-
               {event.related.length > 0 ? (
-                <section className="mt-5 space-y-2" aria-label="Related">
-                  <div className="text-[9px] font-normal uppercase tracking-[0.2em] text-ink-faint/65">
-                    Related
-                  </div>
-                  <ul className="flex flex-wrap gap-1.5">
+                <section className="mt-5" aria-label="Related">
+                  <ul className="flex flex-wrap gap-1">
                     {event.related.map((r, i) => (
                       <li key={`${r.kind}-${r.label}-${i}`}>
-                        <span className="inline-flex items-center rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] text-ink-muted">
-                          <span className="mr-1 text-ink-faint">{r.kind}</span>
+                        <span className="inline-flex items-center rounded-md border border-white/[0.07] bg-white/[0.03] px-2 py-0.5 text-[10px] text-ink-muted/90">
+                          <span className="mr-1 text-ink-faint/70">{r.kind}</span>
                           {r.label}
                         </span>
                       </li>
@@ -350,8 +362,31 @@ export function EventDetailModal() {
                 </section>
               ) : null}
 
+              {event.sources.length > 0 ? (
+                <section className="mt-6 border-t border-white/[0.06] pt-4" aria-label="Sources">
+                  <ul className="space-y-1">
+                    {event.sources.map((s, i) => (
+                      <li key={`${s.title}-${i}`} className="text-[10px] leading-snug">
+                        {s.url ? (
+                          <a
+                            href={s.url}
+                            className="text-ink-muted/90 underline-offset-2 hover:text-accent hover:underline"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {s.title}
+                          </a>
+                        ) : (
+                          <span className="text-ink-faint/80">{s.title}</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
+
               <div
-                className="pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden"
+                className="pb-[max(0.25rem,env(safe-area-inset-bottom))] md:hidden"
                 aria-hidden
               />
             </div>

@@ -5,6 +5,7 @@ import {
   radialAngleForU,
   radialTrackArcPath,
   radialTrackRadius,
+  TIMELINE_MARK_RADIUS,
   TIMELINE_VIEW,
 } from '../../lib/timelineVisual'
 import type { TimelineLayoutMode } from '../../types'
@@ -16,8 +17,9 @@ const CY = H / 2
 const NODE_COUNT = REFERENCE_SCHEMATIC_NODE_COUNT
 const X_PAD = W * 0.11
 const Y_PAD = H * 0.13
-const NODE_R = 3.25
-const NODE_OPACITY = 0.44
+/** Match data-timeline dot scale (`TIMELINE_MARK_RADIUS` × unified `MARK_SCALE`). */
+const NODE_R = TIMELINE_MARK_RADIUS * 0.68
+const NODE_OPACITY = 0.38
 const RADIAL_R = radialTrackRadius(W, H)
 
 function nodePosition(mode: TimelineLayoutMode, i: number) {
@@ -49,16 +51,15 @@ function tickEndpoints(
     case 'vertical':
       return { x1: x - k, y1: y, x2: x + k, y2: y }
     case 'radial': {
-      const dx = x - CX
-      const dy = y - CY
-      const len = Math.hypot(dx, dy) || 1
-      const ux = dx / len
-      const uy = dy / len
+      const angle = Math.atan2(y - CY, x - CX)
+      const tx = -Math.sin(angle)
+      const ty = Math.cos(angle)
+      const half = 8 * 0.92
       return {
-        x1: x - ux * 6,
-        y1: y - uy * 6,
-        x2: x + ux * 10,
-        y2: y + uy * 10,
+        x1: x - tx * half,
+        y1: y - ty * half,
+        x2: x + tx * half,
+        y2: y + ty * half,
       }
     }
     default:
@@ -81,29 +82,6 @@ function primarySpine(mode: TimelineLayoutMode) {
 
 const RADIAL_TRACK_D = radialTrackArcPath(W, H)
 
-function cornerBrackets() {
-  const m = W * 0.055
-  const s = W * 0.035
-  const o = 0.09
-  return (
-    <g className="text-ink" stroke="currentColor" fill="none" strokeWidth={0.75}>
-      <path d={`M ${m} ${m + s} L ${m} ${m} L ${m + s} ${m}`} strokeOpacity={o} />
-      <path
-        d={`M ${W - m - s} ${m} L ${W - m} ${m} L ${W - m} ${m + s}`}
-        strokeOpacity={o}
-      />
-      <path
-        d={`M ${W - m} ${H - m - s} L ${W - m} ${H - m} L ${W - m - s} ${H - m}`}
-        strokeOpacity={o}
-      />
-      <path
-        d={`M ${m + s} ${H - m} L ${m} ${H - m} L ${m} ${H - m - s}`}
-        strokeOpacity={o}
-      />
-    </g>
-  )
-}
-
 type SchematicTimelineProps = {
   mode: TimelineLayoutMode
   transition: Transition
@@ -121,8 +99,6 @@ export function SchematicTimeline({ mode, transition }: SchematicTimelineProps) 
       fill="none"
       aria-hidden
     >
-      {cornerBrackets()}
-
       <motion.path
         fill="none"
         stroke="currentColor"
@@ -174,12 +150,14 @@ export function SchematicTimeline({ mode, transition }: SchematicTimelineProps) 
           <motion.circle
             key={i}
             r={NODE_R}
-            fill="currentColor"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={0.5}
             className="text-ink"
             animate={{
               cx: x,
               cy: y,
-              opacity: NODE_OPACITY,
+              strokeOpacity: NODE_OPACITY,
             }}
             transition={transition}
           />

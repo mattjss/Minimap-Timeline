@@ -1,6 +1,6 @@
 {
   "name": "minimap-timeline",
-  "description": "Minimap Timeline — premium minimap-based timeline explorer",
+  "description": "Motion-led timeline explorer",
   "repository": {
     "type": "git",
     "url": "https://github.com/mattjss/Minimap-Timeline.git"

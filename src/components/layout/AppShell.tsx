@@ -4,7 +4,6 @@ import { TimelineCanvas } from '../../features/timeline/TimelineCanvas'
 import { useTimelineKeyboard } from '../../hooks/useTimelineKeyboard'
 import { useTopicChromeVars } from '../../hooks/useTopicChromeVars'
 import { CanvasBackdrop } from './CanvasBackdrop'
-import { TimelineModeToggle } from './TimelineModeToggle'
 
 export function AppShell() {
   useTimelineKeyboard()
@@ -21,8 +20,6 @@ export function AppShell() {
         <main className="absolute inset-0 min-h-0 min-w-0">
           <TimelineCanvas />
         </main>
-
-        <TimelineModeToggle />
       </LayoutGroup>
 
       <EventDetailModal />

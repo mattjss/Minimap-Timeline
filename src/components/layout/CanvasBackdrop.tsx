@@ -11,19 +11,19 @@ export function CanvasBackdrop() {
         className="absolute inset-0"
         style={{
           background: `
-            radial-gradient(ellipse 95% 72% at 50% 42%, color-mix(in oklch, var(--color-accent) 5.5%, transparent), transparent 52%),
-            radial-gradient(ellipse 120% 58% at 50% 48%, transparent 28%, rgba(0,0,0,0.42) 100%),
-            radial-gradient(ellipse 100% 85% at 50% 108%, rgba(0,0,0,0.72), transparent 58%),
-            radial-gradient(circle at 50% 50%, color-mix(in oklch, var(--color-ink) 2.2%, transparent), transparent 42%),
+            radial-gradient(ellipse 98% 76% at 50% 38%, color-mix(in oklch, var(--color-accent) 4.2%, transparent), transparent 55%),
+            radial-gradient(ellipse 125% 62% at 50% 50%, transparent 32%, rgba(0,0,0,0.38) 100%),
+            radial-gradient(ellipse 105% 88% at 50% 112%, rgba(0,0,0,0.68), transparent 56%),
+            radial-gradient(ellipse 140% 100% at 50% 50%, color-mix(in oklch, var(--color-ink) 1.4%, transparent), transparent 48%),
             var(--color-canvas)
           `,
         }}
       />
       <div
-        className="absolute inset-0 opacity-[0.38]"
+        className="absolute inset-0 opacity-[0.32]"
         style={{
           background:
-            'radial-gradient(ellipse 88% 78% at 50% 48%, transparent 36%, rgba(0,0,0,0.62) 100%)',
+            'radial-gradient(ellipse 92% 82% at 50% 46%, transparent 38%, rgba(0,0,0,0.55) 100%)',
         }}
       />
     </div>

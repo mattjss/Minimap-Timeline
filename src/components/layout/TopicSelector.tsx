@@ -1,67 +1,153 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Fragment, useCallback, useEffect, useId, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import { createPortal } from 'react-dom'
 import { timelineController } from '../../domain/timeline'
 import { TOPIC_SELECTOR_ROWS } from '../../data/topicCatalog'
+import { topicGroupLabel } from '../../data/curatedTopics'
 import { motionTransition } from '../../lib/motion'
 import { cn } from '../../lib/utils'
 import { useAppStore } from '../../store/useAppStore'
-import type { TopicId } from '../../types'
+import type { TopicGroupId, TopicId } from '../../types'
 
-/** Stacked rules — topic source, no canvas text (label lives in aria only). */
-function TopicGlyph({ open }: { open: boolean }) {
+const GROUP_ORDER: TopicGroupId[] = ['sports', 'tech', 'history', 'gaming']
+const PANEL_W = 288
+const PANEL_MAX_H = 320
+
+function Chevron({ open }: { open: boolean }) {
   return (
-    <motion.svg
+    <svg
+      width="10"
+      height="10"
       viewBox="0 0 24 24"
-      width={15}
-      height={15}
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.65}
+      strokeWidth="2"
       strokeLinecap="round"
-      className="text-ink-muted/75"
-      animate={{ opacity: open ? 0.95 : 0.72 }}
-      transition={{ duration: 0.18, ease: motionTransition.ease }}
+      className={cn(
+        'shrink-0 text-ink-muted/50 transition-transform duration-200 ease-out',
+        open && 'rotate-180',
+      )}
       aria-hidden
     >
-      <line x1="5" y1="7" x2="19" y2="7" />
-      <line x1="5" y1="12" x2="19" y2="12" />
-      <line x1="5" y1="17" x2="15" y2="17" />
-    </motion.svg>
+      <path d="M6 9l6 6 6-6" />
+    </svg>
   )
 }
 
 type TopicSelectorProps = {
-  /** `down` for top-mounted cluster; `up` for bottom-mounted. */
+  /** @deprecated Anchored to trigger; ignored. */
   menuOpens?: 'down' | 'up'
 }
 
-export function TopicSelector({ menuOpens = 'down' }: TopicSelectorProps) {
+/**
+ * Bar trigger + anchored editorial popover (not a centered utility sheet).
+ */
+export function TopicSelector({ menuOpens: _menuOpens }: TopicSelectorProps) {
   const activeTopicId = useAppStore((s) => s.activeTopicId)
   const value = activeTopicId ?? 'sf-giants'
   const [open, setOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const listId = useId()
+  const [anchor, setAnchor] = useState<DOMRect | null>(null)
+  const [query, setQuery] = useState('')
+  const searchFieldRef = useRef<HTMLInputElement>(null)
+  const searchFieldId = useId()
+  const paletteDialogId = useId()
   const btnId = useId()
+  const dialogLabelId = useId()
 
   const current =
     TOPIC_SELECTOR_ROWS.find((t) => t.id === value) ?? TOPIC_SELECTOR_ROWS[0]!
 
-  const close = useCallback(() => setOpen(false), [])
+  const close = useCallback(() => {
+    setOpen(false)
+    setQuery('')
+    setAnchor(null)
+  }, [])
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return TOPIC_SELECTOR_ROWS
+    return TOPIC_SELECTOR_ROWS.filter(
+      (t) =>
+        t.label.toLowerCase().includes(q) ||
+        t.trigger.toLowerCase().includes(q) ||
+        t.description.toLowerCase().includes(q) ||
+        t.groupLabel.toLowerCase().includes(q),
+    )
+  }, [query])
+
+  const grouped = useMemo(() => {
+    const map = new Map<TopicGroupId, typeof filtered>()
+    for (const g of GROUP_ORDER) map.set(g, [])
+    for (const row of filtered) {
+      const arr = map.get(row.groupId)
+      if (arr) arr.push(row)
+    }
+    return GROUP_ORDER.map((id) => ({
+      id,
+      label: topicGroupLabel(id),
+      items: map.get(id) ?? [],
+    })).filter((g) => g.items.length > 0)
+  }, [filtered])
+
+  const popoverStyle = useMemo((): CSSProperties | undefined => {
+    if (!anchor || typeof window === 'undefined') return undefined
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    const w = Math.min(PANEL_W, vw - 24)
+    const left = Math.min(Math.max(12, anchor.left), vw - w - 12)
+    const spaceBelow = vh - anchor.bottom
+    const openUp = spaceBelow < PANEL_MAX_H + 24 && anchor.top > PANEL_MAX_H + 24
+    const top = openUp ? anchor.top - PANEL_MAX_H - 8 : anchor.bottom + 6
+    return {
+      position: 'fixed',
+      left,
+      top: Math.max(12, Math.min(top, vh - PANEL_MAX_H - 12)),
+      width: w,
+      maxHeight: PANEL_MAX_H,
+      zIndex: 201,
+    }
+  }, [anchor])
 
   useEffect(() => {
     if (!open) return
-    const onDoc = (e: MouseEvent) => {
-      if (!containerRef.current?.contains(e.target as Node)) close()
+    const t = window.setTimeout(() => searchFieldRef.current?.focus(), 30)
+    return () => window.clearTimeout(t)
+  }, [open])
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setAnchor(null)
+      return
     }
+    const measure = () => {
+      const btn = document.getElementById(btnId)
+      setAnchor(btn?.getBoundingClientRect() ?? null)
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    window.addEventListener('scroll', measure, true)
+    return () => {
+      window.removeEventListener('resize', measure)
+      window.removeEventListener('scroll', measure, true)
+    }
+  }, [open, btnId])
+
+  useEffect(() => {
+    if (!open) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close()
     }
-    document.addEventListener('mousedown', onDoc)
     document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onDoc)
-      document.removeEventListener('keydown', onKey)
-    }
+    return () => document.removeEventListener('keydown', onKey)
   }, [open, close])
 
   const select = (id: TopicId) => {
@@ -69,112 +155,150 @@ export function TopicSelector({ menuOpens = 'down' }: TopicSelectorProps) {
     close()
   }
 
+  const paletteMounted =
+    typeof document !== 'undefined'
+      ? createPortal(
+          <AnimatePresence>
+            {open && anchor ? (
+              <motion.div
+                key="topic-popover-layer"
+                role="presentation"
+                className="fixed inset-0 z-[200]"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.16, ease: motionTransition.ease }}
+              >
+                <button
+                  type="button"
+                  aria-label="Dismiss"
+                  className="absolute inset-0 bg-black/28"
+                  onClick={close}
+                />
+                <motion.div
+                  id={paletteDialogId}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby={dialogLabelId}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 2 }}
+                  transition={{ duration: 0.18, ease: motionTransition.ease }}
+                  style={popoverStyle}
+                  className={cn(
+                    'flex flex-col overflow-hidden rounded-lg',
+                    'border border-white/[0.08]',
+                    'bg-canvas/94 shadow-[0_16px_48px_rgba(0,0,0,0.45)]',
+                    'backdrop-blur-md',
+                  )}
+                >
+                  <div className="shrink-0 border-b border-white/[0.05] px-2.5 py-2">
+                    <label htmlFor={searchFieldId} id={dialogLabelId} className="sr-only">
+                      Filter topics
+                    </label>
+                    <input
+                      ref={searchFieldRef}
+                      id={searchFieldId}
+                      type="search"
+                      autoComplete="off"
+                      placeholder="Filter…"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      className={cn(
+                        'w-full border-0 bg-transparent py-0.5 text-[10.5px] font-normal tracking-[0.02em]',
+                        'text-ink/88 placeholder:text-ink-faint/45',
+                        'outline-none focus:ring-0',
+                      )}
+                    />
+                  </div>
+
+                  <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-1 [scrollbar-width:thin]">
+                    {grouped.length === 0 ? (
+                      <p className="px-2.5 py-5 text-center text-[9.5px] text-ink-faint/70">
+                        No matches
+                      </p>
+                    ) : (
+                      grouped.map((group) => (
+                        <div key={group.id} className="mb-1.5 last:mb-0">
+                          <p className="px-2.5 pb-0.5 pt-1 text-[7.5px] font-medium uppercase tracking-[0.2em] text-ink-faint/55">
+                            {group.label}
+                          </p>
+                          <ul className="space-y-px" role="listbox" aria-label={group.label}>
+                            {group.items.map((opt) => {
+                              const selected = opt.id === value
+                              return (
+                                <li key={opt.id} className="min-w-0">
+                                  <button
+                                    type="button"
+                                    role="option"
+                                    aria-selected={selected}
+                                    onClick={() => select(opt.id)}
+                                    className={cn(
+                                      'flex w-full min-w-0 flex-col gap-0.5 rounded-md px-2 py-1.5 text-left',
+                                      'transition-colors duration-150',
+                                      selected
+                                        ? 'bg-white/[0.045]'
+                                        : 'hover:bg-white/[0.028]',
+                                    )}
+                                  >
+                                    <span
+                                      className="text-[10px] font-medium leading-snug tracking-[0.04em] text-ink/90"
+                                      style={{
+                                        borderLeft:
+                                          selected && opt.accentColor
+                                            ? `1.5px solid ${opt.accentColor}`
+                                            : '1.5px solid transparent',
+                                        paddingLeft: '0.35rem',
+                                        marginLeft: '-0.1rem',
+                                      }}
+                                    >
+                                      {opt.label}
+                                    </span>
+                                    <span className="line-clamp-2 pl-[0.45rem] text-[8.5px] font-normal leading-relaxed tracking-wide text-ink-muted/72">
+                                      {opt.description}
+                                    </span>
+                                  </button>
+                                </li>
+                              )
+                            })}
+                          </ul>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </motion.div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>,
+          document.body,
+        )
+      : null
+
   return (
-    <div ref={containerRef} className="relative shrink-0">
+    <div className="relative min-w-0 shrink-0">
       <button
         id={btnId}
         type="button"
-        aria-haspopup="listbox"
+        aria-haspopup="dialog"
         aria-expanded={open}
-        aria-controls={listId}
-        aria-label={`Topic: ${current.label}. Open menu.`}
+        aria-controls={open ? paletteDialogId : undefined}
+        aria-label={`Topic: ${current.label}. Open list.`}
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          'flex h-9 w-9 items-center justify-center rounded-full',
+          'flex max-w-[9.25rem] items-center gap-1 rounded-full py-1.5 pl-2.5 pr-2 sm:max-w-[11.5rem]',
           'border border-transparent bg-transparent',
-          'text-ink/88 transition-[background-color,opacity] duration-200',
-          'hover:bg-white/[0.06]',
-          'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/12',
-          open && 'bg-white/[0.07]',
+          'text-ink/88 transition-[background-color] duration-200',
+          'hover:bg-white/[0.035]',
+          'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10',
+          open && 'bg-white/[0.045]',
         )}
       >
-        <TopicGlyph open={open} />
+        <span className="min-w-0 flex-1 truncate text-left text-[10px] font-medium tracking-[0.06em] text-ink/86">
+          {current.trigger}
+        </span>
+        <Chevron open={open} />
       </button>
-
-      <AnimatePresence>
-        {open ? (
-          <motion.div
-            key="topic-menu"
-            id={listId}
-            role="listbox"
-            aria-labelledby={btnId}
-            initial={
-              menuOpens === 'down'
-                ? { opacity: 0, y: -8, scale: 0.98 }
-                : { opacity: 0, y: 8, scale: 0.98 }
-            }
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={
-              menuOpens === 'down'
-                ? { opacity: 0, y: -5, scale: 0.99 }
-                : { opacity: 0, y: 6, scale: 0.99 }
-            }
-            transition={{ duration: 0.2, ease: motionTransition.ease }}
-            className={cn(
-              'absolute z-[100] min-w-[13.5rem] max-w-[min(calc(100vw-1.5rem),17rem)]',
-              'overflow-hidden rounded-[0.6rem] py-1',
-              'border border-white/[0.08] bg-black/80',
-              menuOpens === 'down'
-                ? 'left-0 top-[calc(100%+0.4rem)] shadow-[0_20px_50px_rgba(0,0,0,0.58),inset_0_1px_0_rgba(255,255,255,0.04)]'
-                : 'bottom-[calc(100%+0.45rem)] right-0 shadow-[0_24px_56px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.04)]',
-              'backdrop-blur-xl',
-            )}
-          >
-            <div className="max-h-[min(62dvh,22rem)] overflow-y-auto overscroll-contain py-0.5">
-              {TOPIC_SELECTOR_ROWS.map((opt, index) => {
-                const selected = opt.id === value
-                const prev = index > 0 ? TOPIC_SELECTOR_ROWS[index - 1] : null
-                const showGroup = !prev || prev.groupId !== opt.groupId
-                return (
-                  <Fragment key={opt.id}>
-                    {showGroup ? (
-                      <>
-                        {index > 0 ? (
-                          <div
-                            role="separator"
-                            className="mx-3 my-1.5 h-px bg-white/[0.06]"
-                            aria-hidden
-                          />
-                        ) : null}
-                        <span className="sr-only">{opt.groupLabel}</span>
-                      </>
-                    ) : null}
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={selected}
-                      title={opt.description}
-                      onClick={() => select(opt.id)}
-                      className={cn(
-                        'flex w-full items-center gap-2 px-3 py-2 text-left',
-                        'text-[10px] font-medium leading-snug tracking-wide transition-colors duration-150',
-                        selected
-                          ? 'bg-white/[0.06] text-ink/95'
-                          : 'text-ink-muted/88 hover:bg-white/[0.035] hover:text-ink/88',
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          'flex h-3 w-3 shrink-0 items-center justify-center rounded-full border',
-                          selected
-                            ? 'border-white/25 bg-white/[0.08]'
-                            : 'border-white/[0.07] bg-transparent',
-                        )}
-                        aria-hidden
-                      >
-                        {selected ? (
-                          <span className="h-1 w-1 rounded-full bg-ink/70" />
-                        ) : null}
-                      </span>
-                      <span className="min-w-0 flex-1">{opt.label}</span>
-                    </button>
-                  </Fragment>
-                )
-              })}
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      {paletteMounted}
     </div>
   )
 }

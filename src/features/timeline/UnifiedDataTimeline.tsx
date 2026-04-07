@@ -7,14 +7,7 @@ import {
   timelineModeSyncSpring,
 } from '../../lib/motion'
 import { stageRelativeAnchorAboveNode } from '../../lib/svgPointer'
-import {
-  importanceRadius,
-  NODE_FILL_ACCENT,
-  NODE_FILL_MUTED,
-  NODE_FILL_MUTED_HOVER,
-  NODE_HOVER_SCALE,
-  NODE_SELECT_RING_PAD,
-} from '../../lib/timelineVisual'
+import { NODE_HOVER_SCALE, TIMELINE_MARK_RADIUS } from '../../lib/timelineVisual'
 import { useAppStore } from '../../store/useAppStore'
 import {
   computeSceneLayout,
@@ -26,9 +19,9 @@ import {
 
 const { w: W, h: H } = TIMELINE_VIEW
 
-/** Refined hash scale — small marks, no orbs (reference density). */
-const MARK_SCALE = 0.84
-const TICK_SCALE = 0.78
+/** Refined hash scale — small marks, tick grammar (reference density). */
+const MARK_SCALE = 0.56
+const TICK_SCALE = 0.64
 
 function scaleTickTowardCenter(
   tick: Segment,
@@ -62,7 +55,6 @@ export function UnifiedDataTimeline() {
   const setHoverId = useAppStore((s) => s.setHorizontalHoverEventId)
   const setPreviewPoint = useAppStore((s) => s.setEventPreviewPoint)
   const openEventDetail = useAppStore((s) => s.openEventDetail)
-  const setEventDetailOpen = useAppStore((s) => s.setEventDetailOpen)
   const dismiss = useAppStore((s) => s.dismissTimelineInteraction)
   const setSelectedId = useAppStore((s) => s.setHorizontalSelectedEventId)
 
@@ -83,7 +75,6 @@ export function UnifiedDataTimeline() {
   )
 
   const morphXY = { x1: morph, y1: morph, x2: morph, y2: morph } as const
-  const morphCenter = { cx: morph, cy: morph, r: morph } as const
   const tickTransition = {
     ...morphXY,
     opacity: shellMicroSpring,
@@ -178,16 +169,12 @@ export function UnifiedDataTimeline() {
           center.y,
           TICK_SCALE,
         )
-        const baseR = importanceRadius(e.importance) * MARK_SCALE
+        const baseR = TIMELINE_MARK_RADIUS * MARK_SCALE
         const isSelected = selectedId === e.id
         const isHovered = hoverId === e.id
-        const fill = isSelected
-          ? NODE_FILL_ACCENT
-          : isHovered
-            ? NODE_FILL_MUTED_HOVER
-            : NODE_FILL_MUTED
-
-        const tickBase = timelineMode === 'radial' ? 0.09 : 0.14
+        const tickBase = timelineMode === 'radial' ? 0.1 : 0.16
+        const markOpacity = isSelected ? 0.92 : isHovered ? 0.52 : 0.34
+        const markStroke = isSelected ? 0.72 : 0.5
 
         return (
           <g
@@ -206,11 +193,6 @@ export function UnifiedDataTimeline() {
             }}
             onClick={(ev) => {
               ev.stopPropagation()
-              setSelectedId(e.id)
-              setEventDetailOpen(false)
-            }}
-            onDoubleClick={(ev) => {
-              ev.stopPropagation()
               openEventDetail(e.id)
             }}
           >
@@ -226,39 +208,28 @@ export function UnifiedDataTimeline() {
                 y2: tick.y2,
                 opacity: isSelected
                   ? timelineMode === 'radial'
-                    ? 0.24
-                    : 0.3
+                    ? 0.22
+                    : 0.28
                   : isHovered
-                    ? tickBase + 0.07
+                    ? tickBase + 0.05
                     : tickBase,
               }}
               transition={tickTransition}
               style={{ pointerEvents: 'none' }}
             />
             <motion.circle
-              fill="none"
-              stroke={NODE_FILL_ACCENT}
-              strokeWidth={1}
-              initial={false}
-              animate={{
-                cx: center.x,
-                cy: center.y,
-                r: baseR + NODE_SELECT_RING_PAD * MARK_SCALE,
-                strokeOpacity: isSelected ? 0.2 : 0,
-              }}
-              transition={morphCenter}
-              style={{ pointerEvents: 'none' }}
-            />
-            <motion.circle
               cx={center.x}
               cy={center.y}
               r={baseR}
-              fill={fill}
+              fill="none"
+              stroke="currentColor"
               initial={false}
               animate={{
                 cx: center.x,
                 cy: center.y,
                 r: isHovered ? baseR * NODE_HOVER_SCALE : baseR,
+                strokeOpacity: markOpacity,
+                strokeWidth: markStroke,
               }}
               transition={nodeTransition}
               style={{ cursor: 'pointer', pointerEvents: 'all' }}

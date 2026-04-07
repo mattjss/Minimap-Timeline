@@ -6,7 +6,7 @@ import { cn } from '../../lib/utils'
 import { useAppStore } from '../../store/useAppStore'
 
 /**
- * Hover micro-card — absolutely positioned inside `[data-timeline-stage]` (scene-local).
+ * Node-attached micro-preview: title, year, one-line summary only (no category chips / lists).
  */
 export function EventHoverPreview() {
   const hoverId = useAppStore((s) => s.horizontalHoverEventId)
@@ -30,37 +30,29 @@ export function EventHoverPreview() {
           key={event.id}
           role="presentation"
           aria-hidden
-          initial={{ opacity: 0, y: 4 }}
+          initial={{ opacity: 0, y: 3 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 2 }}
-          transition={{ duration: 0.16, ease: motionTransition.ease }}
+          transition={{ duration: 0.14, ease: motionTransition.ease }}
           className={cn(
-            'pointer-events-none absolute z-20 w-[min(15rem,calc(100%-1rem))]',
-            'rounded-[0.5rem] border border-white/[0.06] bg-black/70 px-2.5 py-1.5',
-            'shadow-[0_12px_40px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.03)]',
-            'backdrop-blur-md',
+            'pointer-events-none absolute z-20 w-[min(13rem,calc(100vw-1.25rem))]',
+            'rounded-md border border-white/[0.06] bg-canvas/92 px-2 py-1.5',
           )}
           style={{
             left: point.relX,
             top: point.relY,
-            transform: 'translate(-50%, calc(-100% - 10px))',
+            transform: 'translate(-50%, calc(-100% - 6px))',
           }}
         >
-          <p className="text-[10px] font-medium leading-snug tracking-wide text-ink/88">
+          <p className="text-[10px] font-medium leading-tight tracking-wide text-ink/90">
             {event.title}
           </p>
-          <p className="mt-1 text-[9px] font-normal tracking-[0.12em] text-ink-muted/85">
+          <p className="mt-0.5 text-[9px] tabular-nums tracking-wide text-ink-muted/80">
             {event.year}
-            {event.category ? ` · ${event.category}` : ''}
           </p>
-          <p className="mt-1.5 line-clamp-2 text-[9.5px] font-normal leading-relaxed text-ink-faint/95">
+          <p className="mt-1 line-clamp-2 text-[9px] font-normal leading-snug text-ink-faint/92">
             {event.summary}
           </p>
-          {event.notableGames && event.notableGames.length > 0 ? (
-            <p className="mt-1.5 line-clamp-2 text-[9px] leading-snug text-ink-muted/70">
-              {event.notableGames.slice(0, 3).join(' · ')}
-            </p>
-          ) : null}
         </motion.div>
       ) : null}
     </AnimatePresence>

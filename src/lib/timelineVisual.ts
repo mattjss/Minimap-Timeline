@@ -47,33 +47,31 @@ export function radialTrackArcPath(viewW: number, viewH: number): string {
 
 export type ImportanceLevel = 1 | 2 | 3
 
-/** Tight radius steps — reference-scale dots, not orbs. */
-export function importanceRadius(importance: ImportanceLevel): number {
-  switch (importance) {
-    case 1:
-      return 2.05
-    case 2:
-      return 2.62
-    case 3:
-      return 3.05
-    default:
-      return 2.05
-  }
+/**
+ * Single reference mark size (SVG user units). Importance is data-only; visuals stay uniform.
+ */
+export const TIMELINE_MARK_RADIUS = 0.92
+
+/** @deprecated Use TIMELINE_MARK_RADIUS — kept for call-site compatibility. */
+export function importanceRadius(_importance: ImportanceLevel): number {
+  return TIMELINE_MARK_RADIUS
 }
 
-/** Hover scale applied in motion (tight, reference-quiet). */
-export const NODE_HOVER_SCALE = 1.032
+/** Near-flat hover — tick-like, not a soft orb. */
+export const NODE_HOVER_SCALE = 1.004
 
-/** Extra radius for selection ring stroke (user units). */
-export const NODE_SELECT_RING_PAD = 3
+/** Legacy ring offset (stroke-only marks use inline stroke width). */
+export const NODE_SELECT_RING_PAD = 0.65
 
-/** Warm muted gray — inactive nodes (no cyan). */
-export const NODE_FILL_MUTED = '#8f867a'
+/** Muted ticks — closer to spine, less “diagram node”. */
+export const NODE_FILL_MUTED = '#5c564e'
 
-export const NODE_FILL_MUTED_HOVER = '#9e958a'
+export const NODE_FILL_MUTED_HOVER = '#6a635a'
 
-/** Matches @theme --color-accent */
-export const NODE_FILL_ACCENT = '#c9ae7a'
+/** Selected: ink-forward dot; accent reserved for stroke hints elsewhere. */
+export const NODE_FILL_ACCENT = '#d4cfc6'
+
+export const NODE_FILL_ACCENT_RING = '#c9ae7a'
 
 /** @deprecated Glow removed for reference fidelity; kept for any legacy filter ids. */
 export const NODE_GLOW_FILTER_ID = 'timeline-node-glow'

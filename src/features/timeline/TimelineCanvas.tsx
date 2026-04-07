@@ -1,4 +1,5 @@
 import { useReducedMotion } from 'framer-motion'
+import { TimelineModeToggle } from '../../components/layout/TimelineModeToggle'
 import { topicHasRenderableTimeline } from '../../data/topicEvents'
 import { referenceLayoutMorphSpring } from '../../lib/motion'
 import { cn } from '../../lib/utils'
@@ -9,7 +10,8 @@ import { SchematicTimeline } from './SchematicTimeline'
 import { UnifiedDataTimeline } from './UnifiedDataTimeline'
 
 /**
- * Cinematic centered stage: timeline geometry is the hero (reference composition).
+ * Full-viewport cinematic stage: controls + timeline read as one column;
+ * the line and marks are the hero — no dominant card frame.
  */
 export function TimelineCanvas() {
   const timelineMode = useAppStore((s) => s.timelineMode)
@@ -27,48 +29,60 @@ export function TimelineCanvas() {
       timelineMode === 'radial')
 
   return (
-    <div
-      role="region"
-      aria-label="Timeline"
-      className={cn(
-        'absolute inset-0 flex min-h-0 min-w-0 flex-col',
-        'pointer-events-auto',
-        'items-center justify-center',
-        'px-4 pb-8 pt-[4.75rem] sm:pb-10 sm:pt-[5.25rem]',
-      )}
-    >
+    <>
+      <TimelineModeToggle />
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.85]"
-        style={{
-          background: `
-            radial-gradient(ellipse 72% 58% at 50% 46%, transparent 0%, rgba(0,0,0,0.34) 100%),
-            radial-gradient(ellipse 88% 70% at 50% 50%, transparent 22%, rgba(0,0,0,0.18) 100%)
-          `,
-        }}
-        aria-hidden
-      />
-
-      <div
-        data-timeline-stage
-        className="relative z-[1] w-full max-w-[min(92vw,640px)] select-none"
-        style={{ aspectRatio: `${TIMELINE_VIEW.w} / ${TIMELINE_VIEW.h}` }}
+        role="region"
+        aria-label="Timeline"
+        className={cn(
+          'absolute inset-0 flex min-h-0 min-w-0 flex-col',
+          'pointer-events-auto pt-[3.35rem] sm:pt-[3.55rem]',
+        )}
       >
-        <div className="absolute inset-0 min-h-0 min-w-0">
-          {showDataTimeline ? (
-            <UnifiedDataTimeline />
-          ) : (
-            <SchematicTimeline
-              mode={timelineMode}
-              transition={morphTransition}
-            />
-          )}
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center overflow-hidden px-2 pb-[max(1rem,env(safe-area-inset-bottom))] pt-0 sm:px-4 sm:pb-6">
+        {/* Very soft focal wash — intentional depth, not a card frame */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-100"
+          style={{
+            background: `
+              radial-gradient(ellipse 82% 56% at 50% 48%,
+                color-mix(in oklch, var(--color-accent) 1.6%, transparent) 0%,
+                transparent 65%),
+              radial-gradient(ellipse 96% 72% at 50% 56%,
+                transparent 0%,
+                rgba(0,0,0,0.05) 100%)
+            `,
+          }}
+          aria-hidden
+        />
+
+        <div
+          data-timeline-stage
+          className="relative z-[1] select-none"
+          style={{
+            aspectRatio: `${TIMELINE_VIEW.w} / ${TIMELINE_VIEW.h}`,
+            width:
+              'min(96vw, 1180px, calc((100dvh - 6.5rem) * 640 / 380))',
+          }}
+        >
+          <div className="absolute inset-0 min-h-0 min-w-0">
+            {showDataTimeline ? (
+              <UnifiedDataTimeline />
+            ) : (
+              <SchematicTimeline
+                mode={timelineMode}
+                transition={morphTransition}
+              />
+            )}
+          </div>
+          <EventHoverPreview />
         </div>
-        <EventHoverPreview />
       </div>
 
       <span className="sr-only">
-        Interactive timeline. Top bar: topic and geometry mode.
+        Interactive timeline. Use the top bar for topic and geometry mode.
       </span>
-    </div>
+      </div>
+    </>
   )
 }

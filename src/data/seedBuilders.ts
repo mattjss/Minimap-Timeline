@@ -16,21 +16,31 @@ type BuildOpts = {
   studio?: string
 }
 
+function mediaSeed(id: string, salt: string): string {
+  let h = 2166136261
+  const s = id + salt
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return ((h >>> 0) % 1_000_000).toString(36)
+}
+
 function mediaFor(id: string, rich: boolean): TimelineEvent['media'] {
-  const base = [
-    {
-      id: `${id}-a`,
-      type: 'image' as const,
-      alt: 'Historical still (placeholder)',
-    },
-  ]
-  if (!rich) return base
+  const a = {
+    id: `${id}-a`,
+    type: 'image' as const,
+    url: `https://picsum.photos/seed/${mediaSeed(id, 'a')}/960/540`,
+    alt: 'Reference still',
+  }
+  if (!rich) return [a]
   return [
-    ...base,
+    a,
     {
       id: `${id}-b`,
       type: 'image' as const,
-      alt: 'Archive still 2 (placeholder)',
+      url: `https://picsum.photos/seed/${mediaSeed(id, 'b')}/640/400`,
+      alt: 'Secondary still',
     },
   ]
 }

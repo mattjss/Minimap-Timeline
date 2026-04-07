@@ -1,4 +1,4 @@
-/** Minimap timeline layout variant (prototype shell). */
+/** Timeline layout variant: horizontal, vertical, or radial spine. */
 export type TimelineLayoutMode = 'horizontal' | 'vertical' | 'radial'
 
 /** Stable id for events across topics and API merges. */
