@@ -50,7 +50,7 @@ export type ImportanceLevel = 1 | 2 | 3
 /**
  * Single reference mark size (SVG user units). Importance is data-only; visuals stay uniform.
  */
-export const TIMELINE_MARK_RADIUS = 0.92
+export const TIMELINE_MARK_RADIUS = 0.62
 
 /** @deprecated Use TIMELINE_MARK_RADIUS — kept for call-site compatibility. */
 export function importanceRadius(_importance: ImportanceLevel): number {
@@ -58,7 +58,7 @@ export function importanceRadius(_importance: ImportanceLevel): number {
 }
 
 /** Near-flat hover — tick-like, not a soft orb. */
-export const NODE_HOVER_SCALE = 1.004
+export const NODE_HOVER_SCALE = 1.002
 
 /** Legacy ring offset (stroke-only marks use inline stroke width). */
 export const NODE_SELECT_RING_PAD = 0.65

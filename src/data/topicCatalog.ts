@@ -4,6 +4,15 @@ import {
   getCuratedTopicById,
   topicGroupLabel,
 } from './curatedTopics'
+import { getSortedEventsForTopic } from './topicEvents'
+
+function topicYearRangeHint(id: TopicId): string {
+  const ev = getSortedEventsForTopic(id)
+  if (ev.length === 0) return 'Curated set'
+  const y0 = ev[0]!.year
+  const y1 = ev[ev.length - 1]!.year
+  return y0 === y1 ? `${y0}` : `${y0}–${y1}`
+}
 
 /** Compact shape for legacy call sites and simple lists. */
 export const TOPIC_OPTIONS: readonly {
@@ -25,6 +34,8 @@ export type TopicSelectorRow = {
   groupLabel: string
   description: string
   accentColor: string
+  /** Compact editorial line (year span from seed data). */
+  rangeHint: string
 }
 
 export const TOPIC_SELECTOR_ROWS: TopicSelectorRow[] = CURATED_TOPICS.map((t) => ({
@@ -35,6 +46,7 @@ export const TOPIC_SELECTOR_ROWS: TopicSelectorRow[] = CURATED_TOPICS.map((t) =>
   groupLabel: topicGroupLabel(t.groupId),
   description: t.description,
   accentColor: t.accentColor,
+  rangeHint: topicYearRangeHint(t.id),
 }))
 
 export function topicLabel(id: TopicId): string {

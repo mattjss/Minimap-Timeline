@@ -18,8 +18,8 @@ const NODE_COUNT = REFERENCE_SCHEMATIC_NODE_COUNT
 const X_PAD = W * 0.11
 const Y_PAD = H * 0.13
 /** Match data-timeline dot scale (`TIMELINE_MARK_RADIUS` × unified `MARK_SCALE`). */
-const NODE_R = TIMELINE_MARK_RADIUS * 0.68
-const NODE_OPACITY = 0.38
+const NODE_R = TIMELINE_MARK_RADIUS * 0.44
+const NODE_OPACITY = 0.28
 const RADIAL_R = radialTrackRadius(W, H)
 
 function nodePosition(mode: TimelineLayoutMode, i: number) {
@@ -44,7 +44,7 @@ function tickEndpoints(
   x: number,
   y: number,
 ): { x1: number; y1: number; x2: number; y2: number } {
-  const k = 11
+  const k = 7
   switch (mode) {
     case 'horizontal':
       return { x1: x, y1: y - k, x2: x, y2: y + k }
@@ -54,7 +54,7 @@ function tickEndpoints(
       const angle = Math.atan2(y - CY, x - CX)
       const tx = -Math.sin(angle)
       const ty = Math.cos(angle)
-      const half = 8 * 0.92
+      const half = 5.5 * 0.92
       return {
         x1: x - tx * half,
         y1: y - ty * half,
@@ -102,7 +102,7 @@ export function SchematicTimeline({ mode, transition }: SchematicTimelineProps) 
       <motion.path
         fill="none"
         stroke="currentColor"
-        strokeWidth={1}
+        strokeWidth={0.75}
         strokeLinecap="round"
         d={RADIAL_TRACK_D}
         animate={{ opacity: radialTrackOpacity }}
@@ -111,7 +111,7 @@ export function SchematicTimeline({ mode, transition }: SchematicTimelineProps) 
 
       <motion.line
         stroke="currentColor"
-        strokeWidth={1}
+        strokeWidth={0.75}
         strokeLinecap="round"
         animate={{
           x1: spine.x1,
@@ -130,7 +130,7 @@ export function SchematicTimeline({ mode, transition }: SchematicTimelineProps) 
           <motion.line
             key={`tick-${i}`}
             stroke="currentColor"
-            strokeWidth={1}
+            strokeWidth={0.65}
             strokeLinecap="round"
             animate={{
               x1: tick.x1,
@@ -152,7 +152,7 @@ export function SchematicTimeline({ mode, transition }: SchematicTimelineProps) 
             r={NODE_R}
             fill="none"
             stroke="currentColor"
-            strokeWidth={0.5}
+            strokeWidth={0.42}
             className="text-ink"
             animate={{
               cx: x,

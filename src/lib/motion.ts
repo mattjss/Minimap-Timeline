@@ -34,6 +34,12 @@ export const referenceLayoutMorphSpring = {
 /** Mode toggle pill + data timeline geometry — same spring so control and scene feel like one motion. */
 export const timelineModeSyncSpring = referenceLayoutMorphSpring
 
+/**
+ * Stage re-anchor (H / V / radial composition) — same spring as geometry morph so
+ * topology and frame read as one spatial re-compose, not a cut.
+ */
+export const stageComposeSpring = referenceLayoutMorphSpring
+
 /** Horizontal node hover / selection / label — fast, quiet (same family as reference). */
 export const shellMicroSpring = {
   type: 'spring' as const,

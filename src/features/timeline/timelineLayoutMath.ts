@@ -14,8 +14,8 @@ const X0 = 58
 const X1 = W - 58
 const Y0 = 52
 const Y1 = H - 52
-/** Perpendicular tick half-length (matches horizontal: ±8 on the cross axis). */
-const TICK_HALF = 8
+/** Perpendicular tick half-length — minimal hash, not diagram legs. */
+const TICK_HALF = 5.5
 
 export type Point = { x: number; y: number }
 export type Segment = { x1: number; y1: number; x2: number; y2: number }

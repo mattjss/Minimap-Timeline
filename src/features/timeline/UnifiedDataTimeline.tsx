@@ -6,7 +6,7 @@ import {
   shellMicroSpring,
   timelineModeSyncSpring,
 } from '../../lib/motion'
-import { stageRelativeAnchorAboveNode } from '../../lib/svgPointer'
+import { stageRelativeHoverAnchor } from '../../lib/svgPointer'
 import { NODE_HOVER_SCALE, TIMELINE_MARK_RADIUS } from '../../lib/timelineVisual'
 import { useAppStore } from '../../store/useAppStore'
 import {
@@ -20,8 +20,8 @@ import {
 const { w: W, h: H } = TIMELINE_VIEW
 
 /** Refined hash scale — small marks, tick grammar (reference density). */
-const MARK_SCALE = 0.56
-const TICK_SCALE = 0.64
+const MARK_SCALE = 0.44
+const TICK_SCALE = 0.58
 
 function scaleTickTowardCenter(
   tick: Segment,
@@ -110,7 +110,7 @@ export function UnifiedDataTimeline() {
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      className="h-full w-full cursor-default overflow-visible text-ink/22"
+      className="h-full w-full cursor-default overflow-visible text-ink/15"
       fill="none"
       role="img"
       aria-label="Timeline"
@@ -126,7 +126,7 @@ export function UnifiedDataTimeline() {
 
       <motion.line
         stroke="currentColor"
-        strokeWidth={1}
+        strokeWidth={0.75}
         strokeLinecap="round"
         initial={false}
         animate={{
@@ -134,7 +134,7 @@ export function UnifiedDataTimeline() {
           y1: layout.spineLine.y1,
           x2: layout.spineLine.x2,
           y2: layout.spineLine.y2,
-          opacity: timelineMode === 'radial' ? 0 : 0.19,
+          opacity: timelineMode === 'radial' ? 0 : 0.11,
         }}
         transition={{
           x1: morph,
@@ -150,11 +150,11 @@ export function UnifiedDataTimeline() {
         d={layout.spineArcD}
         fill="none"
         stroke="currentColor"
-        strokeWidth={1}
+        strokeWidth={0.75}
         strokeLinecap="round"
         initial={false}
         animate={{
-          opacity: timelineMode === 'radial' ? 0.2 : 0,
+          opacity: timelineMode === 'radial' ? 0.12 : 0,
         }}
         transition={{ opacity: spineOpacityTransition }}
         style={{ pointerEvents: 'none' }}
@@ -172,9 +172,9 @@ export function UnifiedDataTimeline() {
         const baseR = TIMELINE_MARK_RADIUS * MARK_SCALE
         const isSelected = selectedId === e.id
         const isHovered = hoverId === e.id
-        const tickBase = timelineMode === 'radial' ? 0.1 : 0.16
-        const markOpacity = isSelected ? 0.92 : isHovered ? 0.52 : 0.34
-        const markStroke = isSelected ? 0.72 : 0.5
+        const tickBase = timelineMode === 'radial' ? 0.07 : 0.1
+        const markOpacity = isSelected ? 0.82 : isHovered ? 0.4 : 0.22
+        const markStroke = isSelected ? 0.58 : 0.38
 
         return (
           <g
@@ -182,8 +182,9 @@ export function UnifiedDataTimeline() {
             style={{ pointerEvents: 'all' }}
             onPointerEnter={(ev) => {
               setHoverId(e.id)
-              const p = stageRelativeAnchorAboveNode(
+              const p = stageRelativeHoverAnchor(
                 ev.currentTarget as SVGGElement,
+                timelineMode,
               )
               setPreviewPoint(p)
             }}
@@ -198,7 +199,7 @@ export function UnifiedDataTimeline() {
           >
             <motion.line
               stroke="currentColor"
-              strokeWidth={1}
+              strokeWidth={0.65}
               strokeLinecap="round"
               initial={false}
               animate={{
@@ -208,10 +209,10 @@ export function UnifiedDataTimeline() {
                 y2: tick.y2,
                 opacity: isSelected
                   ? timelineMode === 'radial'
-                    ? 0.22
-                    : 0.28
+                    ? 0.17
+                    : 0.2
                   : isHovered
-                    ? tickBase + 0.05
+                    ? tickBase + 0.03
                     : tickBase,
               }}
               transition={tickTransition}

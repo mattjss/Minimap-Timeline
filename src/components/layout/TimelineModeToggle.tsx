@@ -4,6 +4,7 @@ import { referenceModeToggleSpring } from '../../lib/motion'
 import { cn } from '../../lib/utils'
 import { useAppStore } from '../../store/useAppStore'
 import type { TimelineLayoutMode } from '../../types'
+import { CONTROL_HIT_PX, controlStripSurfaceStyle } from './controlStrip'
 import { TopicSelector } from './TopicSelector'
 
 const MODES: { id: TimelineLayoutMode; ariaLabel: string }[] = [
@@ -12,13 +13,9 @@ const MODES: { id: TimelineLayoutMode; ariaLabel: string }[] = [
   { id: 'radial', ariaLabel: 'Circular timeline' },
 ]
 
-/** Square hit target (px). Indicator circle is smaller, centered inside. */
-const SLOT_PX = 32
-const INDICATOR_PX = 26
+const INDICATOR_PX = 24
+const GLYPH = 13
 
-const GLYPH = 15
-
-/** Stroke geometry: horizontal line, vertical line, circle — one system, three poses. */
 function ModeGlyph({
   mode,
   active,
@@ -27,8 +24,8 @@ function ModeGlyph({
   active: boolean
 }) {
   const stroke = active
-    ? 'rgba(236,232,225,0.82)'
-    : 'rgba(100,96,88,0.42)'
+    ? 'rgba(236,232,225,0.78)'
+    : 'rgba(100,96,88,0.36)'
   const common = {
     width: GLYPH,
     height: GLYPH,
@@ -36,7 +33,7 @@ function ModeGlyph({
     className: 'block shrink-0',
     fill: 'none' as const,
     stroke,
-    strokeWidth: 1.65,
+    strokeWidth: 1.35,
     strokeLinecap: 'round' as const,
     'aria-hidden': true as const,
   }
@@ -45,19 +42,19 @@ function ModeGlyph({
     case 'horizontal':
       return (
         <svg {...common}>
-          <line x1="5" y1="12" x2="19" y2="12" />
+          <line x1="6" y1="12" x2="18" y2="12" />
         </svg>
       )
     case 'vertical':
       return (
         <svg {...common}>
-          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="12" y1="6" x2="12" y2="18" />
         </svg>
       )
     case 'radial':
       return (
         <svg {...common}>
-          <circle cx="12" cy="12" r="7.25" />
+          <circle cx="12" cy="12" r="6.5" />
         </svg>
       )
     default:
@@ -66,8 +63,7 @@ function ModeGlyph({
 }
 
 /**
- * Single top control cluster: topic + geometry modes.
- * Active geometry indicator is a fixed-size circle, centered in a square slot (`layoutId` glide).
+ * One control strip: library icon + geometry triad — shared material, equal squares, circular active glide.
  */
 export function TimelineModeToggle() {
   const timelineMode = useAppStore((s) => s.timelineMode)
@@ -76,34 +72,27 @@ export function TimelineModeToggle() {
 
   return (
     <div
-      className="pointer-events-none fixed left-0 right-0 top-0 z-40 flex justify-center px-4 sm:px-6"
+      className="pointer-events-none fixed left-0 right-0 top-0 z-40 flex justify-start px-[max(0.5rem,env(safe-area-inset-left))] sm:pl-[max(0.65rem,env(safe-area-inset-left))]"
       style={{
-        paddingTop: 'max(0.4rem, env(safe-area-inset-top, 0px))',
+        paddingTop: 'max(0.35rem, env(safe-area-inset-top, 0px))',
       }}
     >
       <div
         className={cn(
-          'pointer-events-auto relative isolate flex max-w-[min(100%,28rem)] items-center gap-0.5 rounded-full p-[2px] pl-1.5',
+          'pointer-events-auto relative isolate flex items-center gap-px rounded-full p-[2px]',
           'backdrop-blur-sm',
         )}
-        style={{
-          backgroundColor: 'color-mix(in oklch, var(--color-canvas) 82%, transparent)',
-          borderColor: 'color-mix(in oklch, var(--color-ink) 4.5%, transparent)',
-          borderWidth: 1,
-          borderStyle: 'solid',
-          boxShadow:
-            'inset 0 1px 0 color-mix(in oklch, var(--color-ink) 2.5%, transparent)',
-        }}
+        style={controlStripSurfaceStyle}
         role="toolbar"
         aria-label="Timeline and topic"
       >
         <TopicSelector menuOpens="down" />
         <div
-          className="mx-0.5 h-3.5 w-px shrink-0 bg-white/[0.04]"
+          className="mx-0.5 h-[18px] w-px shrink-0 bg-white/[0.035]"
           aria-hidden
         />
         <div
-          className="flex items-center gap-0 pr-0.5"
+          className="flex items-center gap-px pr-px"
           role="group"
           aria-label="Timeline geometry"
         >
@@ -116,17 +105,20 @@ export function TimelineModeToggle() {
                 onClick={() => timelineController.setLayoutMode(id)}
                 aria-pressed={active}
                 aria-label={ariaLabel}
-                style={{ width: SLOT_PX, height: SLOT_PX }}
+                style={{
+                  width: CONTROL_HIT_PX,
+                  height: CONTROL_HIT_PX,
+                }}
                 className={cn(
-                  'relative flex shrink-0 items-center justify-center rounded-sm',
-                  'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/[0.12]',
+                  'relative flex shrink-0 items-center justify-center rounded-[0.2rem]',
+                  'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/9',
                 )}
               >
                 {active ? (
                   <motion.span
                     layoutId="timeline-mode-segment"
                     layout="position"
-                    className="pointer-events-none absolute rounded-full bg-white/[0.045]"
+                    className="pointer-events-none absolute rounded-full bg-white/[0.038]"
                     style={{
                       width: INDICATOR_PX,
                       height: INDICATOR_PX,
@@ -138,7 +130,7 @@ export function TimelineModeToggle() {
                     transition={segmentTransition}
                   />
                 ) : null}
-                <span className="relative z-[1] flex size-full items-center justify-center">
+                <span className="relative z-1 flex size-full items-center justify-center">
                   <ModeGlyph mode={id} active={active} />
                 </span>
               </button>
