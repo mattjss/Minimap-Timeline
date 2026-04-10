@@ -2,8 +2,6 @@ import { create } from 'zustand'
 import { getSortedEventsForTopic } from '../data/topicEvents'
 import type { TimelineLayoutMode, TopicId } from '../types'
 
-export type EventPreviewPoint = { relX: number; relY: number }
-
 type AppState = {
   activeTopicId: TopicId | null
   setActiveTopicId: (id: TopicId | null) => void
@@ -13,9 +11,6 @@ type AppState = {
   setHorizontalHoverEventId: (id: string | null) => void
   horizontalSelectedEventId: string | null
   setHorizontalSelectedEventId: (id: string | null) => void
-  /** Position for hover preview, relative to `[data-timeline-stage]`. */
-  eventPreviewPoint: EventPreviewPoint | null
-  setEventPreviewPoint: (p: EventPreviewPoint | null) => void
   eventDetailOpen: boolean
   setEventDetailOpen: (open: boolean) => void
   /** Clear hover preview, selection, and detail — e.g. stage backdrop. */
@@ -37,7 +32,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       activeTopicId,
       horizontalHoverEventId: null,
-      eventPreviewPoint: null,
       horizontalSelectedEventId: first,
       eventDetailOpen: false,
     })
@@ -47,7 +41,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       timelineMode,
       horizontalHoverEventId: null,
-      eventPreviewPoint: null,
       eventDetailOpen: false,
     }),
   horizontalHoverEventId: null,
@@ -56,14 +49,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   horizontalSelectedEventId: firstEventIdForTopic('sf-giants'),
   setHorizontalSelectedEventId: (horizontalSelectedEventId) =>
     set({ horizontalSelectedEventId }),
-  eventPreviewPoint: null,
-  setEventPreviewPoint: (eventPreviewPoint) => set({ eventPreviewPoint }),
   eventDetailOpen: false,
   setEventDetailOpen: (eventDetailOpen) => set({ eventDetailOpen }),
   dismissTimelineInteraction: () =>
     set({
       horizontalHoverEventId: null,
-      eventPreviewPoint: null,
       horizontalSelectedEventId: null,
       eventDetailOpen: false,
     }),
@@ -72,7 +62,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       horizontalSelectedEventId: eventId,
       eventDetailOpen: true,
       horizontalHoverEventId: null,
-      eventPreviewPoint: null,
     }),
   stepHorizontalSelection: (delta) => {
     const s = get()
@@ -92,7 +81,6 @@ export const useAppStore = create<AppState>((set, get) => ({
         horizontalSelectedEventId: events[i]!.id,
         eventDetailOpen: false,
         horizontalHoverEventId: null,
-        eventPreviewPoint: null,
       })
       return
     }
@@ -101,7 +89,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       horizontalSelectedEventId: events[next]!.id,
       eventDetailOpen: false,
       horizontalHoverEventId: null,
-      eventPreviewPoint: null,
     })
   },
 }))

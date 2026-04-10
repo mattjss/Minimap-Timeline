@@ -6,7 +6,7 @@ import {
   shellMicroSpring,
   timelineModeSyncSpring,
 } from '../../lib/motion'
-import { stageRelativeHoverAnchor } from '../../lib/svgPointer'
+import { TIMELINE_STROKE } from '../../lib/timelineTheme'
 import { NODE_HOVER_SCALE, TIMELINE_MARK_RADIUS } from '../../lib/timelineVisual'
 import { useAppStore } from '../../store/useAppStore'
 import {
@@ -19,8 +19,7 @@ import {
 
 const { w: W, h: H } = TIMELINE_VIEW
 
-/** Refined hash scale — small marks, tick grammar (reference density). */
-const MARK_SCALE = 0.44
+const MARK_SCALE = 0.58
 const TICK_SCALE = 0.58
 
 function scaleTickTowardCenter(
@@ -38,7 +37,7 @@ function scaleTickTowardCenter(
 }
 
 /**
- * Hero timeline: one morphing scene across horizontal / vertical / radial (same ids, same springs).
+ * Hero timeline: morphing H / V / radial — strokes use dedicated dark-mode tokens.
  */
 export function UnifiedDataTimeline() {
   const reduceMotion = useReducedMotion()
@@ -53,7 +52,6 @@ export function UnifiedDataTimeline() {
   const hoverId = useAppStore((s) => s.horizontalHoverEventId)
   const selectedId = useAppStore((s) => s.horizontalSelectedEventId)
   const setHoverId = useAppStore((s) => s.setHorizontalHoverEventId)
-  const setPreviewPoint = useAppStore((s) => s.setEventPreviewPoint)
   const openEventDetail = useAppStore((s) => s.openEventDetail)
   const dismiss = useAppStore((s) => s.dismissTimelineInteraction)
   const setSelectedId = useAppStore((s) => s.setHorizontalSelectedEventId)
@@ -83,25 +81,28 @@ export function UnifiedDataTimeline() {
     cx: morph,
     cy: morph,
     r: shellMicroSpring,
+    strokeWidth: shellMicroSpring,
   } as const
 
   if (events.length === 0) {
     return (
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        className="h-full w-full text-ink/22"
+        className="h-full w-full"
         fill="none"
         role="img"
         aria-label="No events"
+        preserveAspectRatio="xMidYMid meet"
       >
         <line
           x1={58}
           y1={TIMELINE_CY}
           x2={W - 58}
           y2={TIMELINE_CY}
-          stroke="currentColor"
-          strokeWidth={1}
-          strokeOpacity={0.2}
+          stroke={TIMELINE_STROKE.spine}
+          strokeWidth={1.1}
+          strokeOpacity={0.45}
+          strokeLinecap="round"
         />
       </svg>
     )
@@ -110,10 +111,13 @@ export function UnifiedDataTimeline() {
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      className="h-full w-full cursor-default overflow-visible text-ink/15"
+      className="h-full w-full cursor-default overflow-visible"
       fill="none"
       role="img"
       aria-label="Timeline"
+      preserveAspectRatio={
+        timelineMode === 'radial' ? 'xMaxYMax meet' : 'xMidYMid meet'
+      }
     >
       <rect
         width={W}
@@ -125,8 +129,8 @@ export function UnifiedDataTimeline() {
       />
 
       <motion.line
-        stroke="currentColor"
-        strokeWidth={0.75}
+        stroke={TIMELINE_STROKE.spine}
+        strokeWidth={1.2}
         strokeLinecap="round"
         initial={false}
         animate={{
@@ -134,7 +138,7 @@ export function UnifiedDataTimeline() {
           y1: layout.spineLine.y1,
           x2: layout.spineLine.x2,
           y2: layout.spineLine.y2,
-          opacity: timelineMode === 'radial' ? 0 : 0.11,
+          opacity: timelineMode === 'radial' ? 0 : 1,
         }}
         transition={{
           x1: morph,
@@ -149,12 +153,12 @@ export function UnifiedDataTimeline() {
       <motion.path
         d={layout.spineArcD}
         fill="none"
-        stroke="currentColor"
-        strokeWidth={0.75}
+        stroke={TIMELINE_STROKE.spine}
+        strokeWidth={1.2}
         strokeLinecap="round"
         initial={false}
         animate={{
-          opacity: timelineMode === 'radial' ? 0.12 : 0,
+          opacity: timelineMode === 'radial' ? 1 : 0,
         }}
         transition={{ opacity: spineOpacityTransition }}
         style={{ pointerEvents: 'none' }}
@@ -172,34 +176,55 @@ export function UnifiedDataTimeline() {
         const baseR = TIMELINE_MARK_RADIUS * MARK_SCALE
         const isSelected = selectedId === e.id
         const isHovered = hoverId === e.id
-        const tickBase = timelineMode === 'radial' ? 0.07 : 0.1
-        const markOpacity = isSelected ? 0.82 : isHovered ? 0.4 : 0.22
-        const markStroke = isSelected ? 0.58 : 0.38
+        const tickOpacity = isSelected
+          ? 1
+          : isHovered
+            ? 0.88
+            : timelineMode === 'radial'
+              ? 0.62
+              : 0.68
+        const markStroke =
+          isSelected || isHovered
+            ? TIMELINE_STROKE.markEmphasis
+            : TIMELINE_STROKE.mark
+        const markW = isSelected ? 0.95 : isHovered ? 0.82 : 0.68
+        const hitR = Math.max(12, baseR * 14)
 
         return (
           <g
             key={e.id}
+            data-event-node={e.id}
             style={{ pointerEvents: 'all' }}
-            onPointerEnter={(ev) => {
-              setHoverId(e.id)
-              const p = stageRelativeHoverAnchor(
-                ev.currentTarget as SVGGElement,
-                timelineMode,
-              )
-              setPreviewPoint(p)
-            }}
-            onPointerLeave={() => {
-              setHoverId(null)
-              setPreviewPoint(null)
-            }}
+            onPointerEnter={() => setHoverId(e.id)}
+            onPointerLeave={() => setHoverId(null)}
             onClick={(ev) => {
               ev.stopPropagation()
               openEventDetail(e.id)
             }}
           >
+            <circle
+              cx={center.x}
+              cy={center.y}
+              r={hitR}
+              fill="transparent"
+              stroke="none"
+              tabIndex={0}
+              role="button"
+              aria-label={`${e.title}, ${e.year}`}
+              aria-current={isSelected ? 'true' : undefined}
+              className="cursor-pointer outline-none"
+              style={{ pointerEvents: 'all' }}
+              onFocus={() => setSelectedId(e.id)}
+              onKeyDown={(ev) => {
+                if (ev.key === 'Enter' || ev.key === ' ') {
+                  ev.preventDefault()
+                  openEventDetail(e.id)
+                }
+              }}
+            />
             <motion.line
-              stroke="currentColor"
-              strokeWidth={0.65}
+              stroke={TIMELINE_STROKE.tick}
+              strokeWidth={0.9}
               strokeLinecap="round"
               initial={false}
               animate={{
@@ -207,13 +232,7 @@ export function UnifiedDataTimeline() {
                 y1: tick.y1,
                 x2: tick.x2,
                 y2: tick.y2,
-                opacity: isSelected
-                  ? timelineMode === 'radial'
-                    ? 0.17
-                    : 0.2
-                  : isHovered
-                    ? tickBase + 0.03
-                    : tickBase,
+                opacity: tickOpacity,
               }}
               transition={tickTransition}
               style={{ pointerEvents: 'none' }}
@@ -223,32 +242,17 @@ export function UnifiedDataTimeline() {
               cy={center.y}
               r={baseR}
               fill="none"
-              stroke="currentColor"
+              stroke={markStroke}
               initial={false}
               animate={{
                 cx: center.x,
                 cy: center.y,
                 r: isHovered ? baseR * NODE_HOVER_SCALE : baseR,
-                strokeOpacity: markOpacity,
-                strokeWidth: markStroke,
+                strokeWidth: markW,
+                strokeOpacity: isSelected ? 1 : isHovered ? 0.96 : 0.88,
               }}
               transition={nodeTransition}
-              style={{ cursor: 'pointer', pointerEvents: 'all' }}
-              tabIndex={0}
-              focusable="true"
-              aria-label={`${e.title}, ${e.year}`}
-              aria-current={isSelected ? 'true' : undefined}
-              onFocus={() => {
-                setHoverId(null)
-                setPreviewPoint(null)
-                setSelectedId(e.id)
-              }}
-              onKeyDown={(ev) => {
-                if (ev.key === 'Enter' || ev.key === ' ') {
-                  ev.preventDefault()
-                  openEventDetail(e.id)
-                }
-              }}
+              style={{ pointerEvents: 'none' }}
             />
           </g>
         )

@@ -1,6 +1,7 @@
 import type { TimelineEvent, TimelineLayoutMode } from '../../types'
 import {
   radialAngleForU,
+  radialCenter,
   radialSweep,
   radialTrackArcPath,
   radialTrackRadius,
@@ -10,12 +11,11 @@ import {
 const { w: W, h: H } = TIMELINE_VIEW
 export const TIMELINE_CX = W / 2
 export const TIMELINE_CY = H / 2
-const X0 = 58
-const X1 = W - 58
-const Y0 = 52
-const Y1 = H - 52
-/** Perpendicular tick half-length — minimal hash, not diagram legs. */
-const TICK_HALF = 5.5
+const X0 = 22
+const X1 = W - 22
+const Y0 = 26
+const Y1 = H - 26
+const TICK_HALF = 6.75
 
 export type Point = { x: number; y: number }
 export type Segment = { x1: number; y1: number; x2: number; y2: number }
@@ -81,13 +81,14 @@ export function minimapPointVertical(u: number): Point {
   return { x: TIMELINE_CX, y: Y0 + u * (Y1 - Y0) }
 }
 
-/** Radial minimap: u → position on the circular track. */
+/** Radial minimap: u → position on the quarter-arc (center = bottom-right of viewBox). */
 export function minimapPointRadial(u: number): Point {
+  const { cx, cy } = radialCenter(W, H)
   const TRACK_R = radialTrackRadius(W, H)
   const angle = radialAngleForU(u)
   return {
-    x: TIMELINE_CX + TRACK_R * Math.cos(angle),
-    y: TIMELINE_CY + TRACK_R * Math.sin(angle),
+    x: cx + TRACK_R * Math.cos(angle),
+    y: cy + TRACK_R * Math.sin(angle),
   }
 }
 
@@ -111,7 +112,8 @@ function tickThroughCenterVertical(y: number): Segment {
 
 /** Short hash perpendicular to radius at the mark — same grammar as H/V ticks, not a center spoke. */
 function tickRadialPerpendicular(c: Point): Segment {
-  const angle = Math.atan2(c.y - TIMELINE_CY, c.x - TIMELINE_CX)
+  const { cx, cy } = radialCenter(W, H)
+  const angle = Math.atan2(c.y - cy, c.x - cx)
   const tx = -Math.sin(angle)
   const ty = Math.cos(angle)
   const half = TICK_HALF * 0.92
@@ -172,14 +174,15 @@ export function computeViewportBracket(
     }
   }
 
+  const { cx: rcx, cy: rcy } = radialCenter(W, H)
   const TRACK_R = radialTrackRadius(W, H) - 11
   const a0 = radialAngleForU(u[i0]!)
   const a1 = radialAngleForU(u[i1]!)
   const spanAngle = (u[i1]! - u[i0]!) * radialSweep()
-  const x0 = TIMELINE_CX + TRACK_R * Math.cos(a0)
-  const y0 = TIMELINE_CY + TRACK_R * Math.sin(a0)
-  const x1 = TIMELINE_CX + TRACK_R * Math.cos(a1)
-  const y1 = TIMELINE_CY + TRACK_R * Math.sin(a1)
+  const x0 = rcx + TRACK_R * Math.cos(a0)
+  const y0 = rcy + TRACK_R * Math.sin(a0)
+  const x1 = rcx + TRACK_R * Math.cos(a1)
+  const y1 = rcy + TRACK_R * Math.sin(a1)
   const largeArc = Math.abs(spanAngle) > Math.PI ? 1 : 0
   const d = `M ${x0} ${y0} A ${TRACK_R} ${TRACK_R} 0 ${largeArc} 1 ${x1} ${y1}`
   return { kind: 'arc', d }

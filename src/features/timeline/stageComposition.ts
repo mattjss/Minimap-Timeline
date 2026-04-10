@@ -2,45 +2,35 @@ import type { TimelineLayoutMode } from '../../types'
 import { cn } from '../../lib/utils'
 
 /**
- * Scene architecture (reference model): no centered demo card.
- * — Horizontal: full-width strip along the bottom.
- * — Vertical: full-height strip along the left (purposeful open field to the right).
- * — Radial: oversized plane, corner-anchored, mostly off-canvas (cropped arc).
+ * Edge-anchored stage regions — sizes are Tailwind-only so Framer `layout` can interpolate.
+ * (Do not pair with `animate={{ left: 'auto' }}` — that breaks transitions.)
+ *
+ * — Horizontal: full width, flush bottom (within safe area on parent).
+ * — Vertical: full height, flush left.
+ * — Radial: large square in the bottom-right; SVG uses preserveAspectRatio xMaxYMax so the
+ *   90° dial pins to the corner and the circle hangs off the top/left.
  */
 export function stageSceneClasses(mode: TimelineLayoutMode): string {
   switch (mode) {
     case 'horizontal':
       return cn(
         'left-0 right-0 bottom-0 top-auto w-full',
-        'h-[min(26vh,220px)] max-h-[220px]',
+        'h-[min(40vh,440px)] min-h-[240px]',
       )
     case 'vertical':
       return cn(
-        'left-0 top-0 bottom-0 right-auto h-full',
-        'w-[min(24vw,260px)] max-w-[260px] min-w-[200px]',
+        'left-0 top-0 bottom-0 right-auto',
+        'h-full w-[min(42vw,480px)] min-w-[300px]',
       )
     case 'radial':
       return cn(
         'left-auto top-auto right-0 bottom-0',
-        'w-[min(118vw,1240px)] max-w-none',
-        'aspect-[640/380]',
+        'aspect-square w-[min(92vmin,600px)] max-w-[min(92vw,600px)]',
       )
     default:
-      return 'left-0 right-0 bottom-0 top-auto h-[min(26vh,220px)] w-full'
-  }
-}
-
-/** Framer position props — always complete to avoid sticky values across modes. */
-export function stageSceneMotion(mode: TimelineLayoutMode): Record<string, string | number> {
-  const z = { x: 0, y: 0 }
-  switch (mode) {
-    case 'horizontal':
-      return { ...z, left: 0, right: 0, top: 'auto', bottom: 0 }
-    case 'vertical':
-      return { ...z, left: 0, right: 'auto', top: 0, bottom: 0 }
-    case 'radial':
-      return { ...z, left: 'auto', right: '-26%', top: 'auto', bottom: '-36%' }
-    default:
-      return { ...z, left: 0, right: 0, top: 'auto', bottom: 0 }
+      return cn(
+        'left-0 right-0 bottom-0 top-auto w-full',
+        'h-[min(40vh,440px)] min-h-[240px]',
+      )
   }
 }

@@ -9,12 +9,11 @@ import { cn } from '../../lib/utils'
 import { useAppStore } from '../../store/useAppStore'
 import { EventHoverPreview } from './EventHoverPreview'
 import { SchematicTimeline } from './SchematicTimeline'
-import { stageSceneClasses, stageSceneMotion } from './stageComposition'
+import { stageSceneClasses } from './stageComposition'
 import { UnifiedDataTimeline } from './UnifiedDataTimeline'
 
 /**
- * Scene shell: edge-anchored regions per mode — not a centered staging card.
- * SVG viewBox is unchanged; the *viewport* for the scene is structural.
+ * Scene shell: layout morphs between modes via Framer `layout` (no `left: 'auto'` animate).
  */
 export function TimelineCanvas() {
   const timelineMode = useAppStore((s) => s.timelineMode)
@@ -46,16 +45,14 @@ export function TimelineCanvas() {
         <div
           className={cn(
             'relative min-h-0 min-w-0 flex-1 overflow-hidden',
-            'pl-[max(0.5rem,env(safe-area-inset-left))]',
-            'pr-[max(0.5rem,env(safe-area-inset-right))]',
-            'pb-[max(0.5rem,env(safe-area-inset-bottom))]',
+            'pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]',
+            'pb-[env(safe-area-inset-bottom)]',
           )}
         >
           <motion.div
             data-timeline-stage
+            layout={!instant}
             className={cn('absolute z-[1] select-none', stageSceneClasses(timelineMode))}
-            initial={false}
-            animate={stageSceneMotion(timelineMode)}
             transition={stageTransition}
           >
             <div className="absolute inset-0 min-h-0 min-w-0">
@@ -73,8 +70,8 @@ export function TimelineCanvas() {
         </div>
 
         <span className="sr-only">
-          Timeline scene: horizontal strip at bottom, vertical strip at left,
-          radial geometry cropped at the corner.
+          Timeline scene: horizontal strip along the bottom edge, vertical strip along the
+          left edge, radial dial as a quarter circle in the bottom-right corner.
         </span>
       </div>
     </>

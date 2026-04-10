@@ -1,7 +1,9 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useMemo } from 'react'
+import { useLayoutEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { getSortedEventsForTopic } from '../../data/topicEvents'
 import { motionTransition } from '../../lib/motion'
+import { clientViewportHoverAnchor } from '../../lib/svgPointer'
 import { cn } from '../../lib/utils'
 import { useAppStore } from '../../store/useAppStore'
 import type { TimelineLayoutMode } from '../../types'
@@ -34,59 +36,133 @@ function previewPlacement(mode: TimelineLayoutMode): {
   }
 }
 
+function resolveTargetEventId(
+  hoverId: string | null,
+  selectedId: string | null,
+  detailOpen: boolean,
+): string | null {
+  if (detailOpen) return null
+  return hoverId ?? selectedId
+}
+
 /**
- * Hover preview in the open quadrant relative to layout mode (stage-local).
+ * Hover + selection preview — portaled with viewport anchoring so it isn’t clipped by
+ * `overflow-hidden` on the timeline shell. Position tracks layout / scroll via ResizeObserver.
  */
 export function EventHoverPreview() {
   const hoverId = useAppStore((s) => s.horizontalHoverEventId)
-  const point = useAppStore((s) => s.eventPreviewPoint)
+  const selectedId = useAppStore((s) => s.horizontalSelectedEventId)
   const detailOpen = useAppStore((s) => s.eventDetailOpen)
   const topicId = useAppStore((s) => s.activeTopicId)
   const timelineMode = useAppStore((s) => s.timelineMode)
 
-  const event = useMemo(() => {
-    if (!hoverId || detailOpen) return null
-    return (
-      getSortedEventsForTopic(topicId).find((e) => e.id === hoverId) ?? null
-    )
-  }, [hoverId, detailOpen, topicId])
+  const targetId = resolveTargetEventId(hoverId, selectedId, detailOpen)
 
-  const show = Boolean(event && point)
+  const event = useMemo(() => {
+    if (!targetId) return null
+    return getSortedEventsForTopic(topicId).find((e) => e.id === targetId) ?? null
+  }, [targetId, topicId])
+
+  const [anchor, setAnchor] = useState<{ left: number; top: number } | null>(null)
+
+  useLayoutEffect(() => {
+    let ro: ResizeObserver | null = null
+
+    const measure = () => {
+      if (!targetId || typeof document === 'undefined') {
+        setAnchor(null)
+        return
+      }
+      const stage = document.querySelector('[data-timeline-stage]')
+      if (!stage) {
+        setAnchor(null)
+        return
+      }
+      const g = stage.querySelector(
+        `[data-event-node="${CSS.escape(targetId)}"]`,
+      ) as SVGGElement | null
+      if (!g) {
+        setAnchor(null)
+        return
+      }
+      setAnchor(clientViewportHoverAnchor(g, timelineMode))
+    }
+
+    const raf = requestAnimationFrame(measure)
+
+    const stage = document.querySelector('[data-timeline-stage]')
+    ro =
+      stage && typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => requestAnimationFrame(measure))
+        : null
+    if (stage && ro) ro.observe(stage)
+
+    const onWin = () => requestAnimationFrame(measure)
+    window.addEventListener('resize', onWin)
+    window.addEventListener('scroll', onWin, true)
+
+    return () => {
+      cancelAnimationFrame(raf)
+      ro?.disconnect()
+      window.removeEventListener('resize', onWin)
+      window.removeEventListener('scroll', onWin, true)
+    }
+  }, [targetId, timelineMode, topicId])
+
+  const show = Boolean(event && anchor)
   const place = previewPlacement(timelineMode)
 
-  return (
-    <AnimatePresence>
-      {show && event && point ? (
-        <motion.div
-          key={event.id}
-          role="presentation"
-          aria-hidden
-          initial={{ opacity: 0, y: timelineMode === 'horizontal' ? 4 : 0, x: 0 }}
-          animate={{ opacity: 1, y: 0, x: 0 }}
-          exit={{ opacity: 0, y: 2 }}
-          transition={{ duration: 0.16, ease: motionTransition.ease }}
-          className={cn(
-            'pointer-events-none absolute z-20 w-[min(14rem,calc(100vw-2rem))]',
-            'rounded-[0.45rem] border border-white/[0.05] bg-canvas/95 px-2.5 py-2',
-          )}
-          style={{
-            left: point.relX,
-            top: point.relY,
-            transform: place.transform,
-            transformOrigin: place.origin,
-          }}
-        >
-          <p className="text-[9.5px] font-medium leading-snug tracking-[0.06em] text-ink/84">
-            {event.title}
-          </p>
-          <p className="mt-0.5 text-[8.5px] tabular-nums tracking-[0.08em] text-ink-muted/68">
-            {event.year}
-          </p>
-          <p className="mt-1 line-clamp-2 text-[8.5px] font-normal leading-relaxed tracking-wide text-ink-faint/80">
-            {event.summary}
-          </p>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
-  )
+  const layer =
+    typeof document !== 'undefined' ? (
+      <AnimatePresence>
+        {show && event && anchor ? (
+          <motion.div
+            key={event.id}
+            role="tooltip"
+            initial={{ opacity: 0, y: timelineMode === 'horizontal' ? 4 : 0, x: 0 }}
+            animate={{ opacity: 1, y: 0, x: 0 }}
+            exit={{ opacity: 0, y: 2 }}
+            transition={{ duration: 0.16, ease: motionTransition.ease }}
+            className={cn(
+              'pointer-events-none fixed z-[320] w-[min(15rem,calc(100vw-2rem))]',
+              'rounded-[0.45rem] border border-white/[0.08] bg-canvas/95 px-2.5 py-2 shadow-lg',
+              'backdrop-blur-sm',
+            )}
+            style={{
+              left: anchor.left,
+              top: anchor.top,
+              transform: place.transform,
+              transformOrigin: place.origin,
+            }}
+          >
+            {event.subtype ? (
+              <span className="mb-1 inline-block rounded border border-white/[0.06] bg-white/[0.04] px-1.5 py-0.5 text-[6.5px] font-medium uppercase tracking-[0.16em] text-ink-muted/80">
+                {event.subtype.replace(/-/g, ' ')}
+              </span>
+            ) : null}
+            <p className="text-[9.5px] font-medium leading-snug tracking-[0.06em] text-ink/88">
+              {event.title}
+            </p>
+            <p className="mt-0.5 text-[8.5px] tabular-nums tracking-[0.08em] text-ink-muted/72">
+              {event.year}
+              {event.category ? (
+                <span className="text-ink-faint/55"> · {event.category}</span>
+              ) : null}
+            </p>
+            <p className="mt-1 line-clamp-3 text-[8.5px] font-normal leading-relaxed tracking-wide text-ink-faint/82">
+              {event.summary}
+            </p>
+            {event.facts?.[0] ? (
+              <p className="mt-1.5 border-t border-white/[0.06] pt-1.5 text-[8px] leading-snug text-ink-muted/85">
+                <span className="font-medium text-ink-faint/90">{event.facts[0].label}</span>
+                <span className="text-ink-faint/50"> · </span>
+                {event.facts[0].value}
+              </p>
+            ) : null}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    ) : null
+
+  return layer ? createPortal(layer, document.body) : null
 }

@@ -34,6 +34,22 @@ export function stageRelativeHoverAnchor(
   }
 }
 
+/** Same anchor as `stageRelativeHoverAnchor`, in viewport coordinates for `position: fixed` UI. */
+export function clientViewportHoverAnchor(
+  groupEl: SVGGElement,
+  mode: TimelineLayoutMode,
+): { left: number; top: number } | null {
+  const rel = stageRelativeHoverAnchor(groupEl, mode)
+  if (!rel) return null
+  const stage = groupEl.closest('[data-timeline-stage]') as HTMLElement | null
+  if (!stage) return null
+  const stageBounds = stage.getBoundingClientRect()
+  return {
+    left: stageBounds.left + rel.relX,
+    top: stageBounds.top + rel.relY,
+  }
+}
+
 /** @deprecated Use stageRelativeHoverAnchor(group, mode) */
 export function stageRelativeAnchorAboveNode(
   groupEl: SVGGElement,

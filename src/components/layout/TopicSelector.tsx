@@ -20,10 +20,11 @@ import type { TopicGroupId, TopicId } from '../../types'
 import { CONTROL_HIT_PX } from './controlStrip'
 
 const GROUP_ORDER: TopicGroupId[] = ['sports', 'tech', 'history', 'gaming']
-const PANEL_W = 300
-const PANEL_MAX_H = 380
+const PANEL_W = 328
+const PANEL_MAX_H = 440
 
-const PANEL_BG_TOP = 'rgba(4, 3, 3, 0.94)'
+/** Base Web backgroundPrimary — scroll fade matches panel surface */
+const PANEL_BG_TOP = 'rgba(22, 22, 22, 0.96)'
 
 /** Minimal 2×2 grid — library / collections, not a chevron dropdown. */
 function TopicsLibraryGlyph({ active }: { active: boolean }) {
@@ -123,7 +124,9 @@ export function TopicSelector({ menuOpens: _menuOpens }: TopicSelectorProps) {
         t.trigger.toLowerCase().includes(q) ||
         t.description.toLowerCase().includes(q) ||
         t.groupLabel.toLowerCase().includes(q) ||
-        t.rangeHint.toLowerCase().includes(q),
+        t.rangeHint.toLowerCase().includes(q) ||
+        t.tags.some((tag) => tag.toLowerCase().includes(q)) ||
+        (t.factSnippet?.toLowerCase().includes(q) ?? false),
     )
   }, [query])
 
@@ -276,7 +279,7 @@ export function TopicSelector({ menuOpens: _menuOpens }: TopicSelectorProps) {
 
                     <div
                       className={cn(
-                        'h-full max-h-[min(304px,52dvh)] overflow-y-auto overflow-x-hidden',
+                        'h-full max-h-[min(340px,56dvh)] overflow-y-auto overflow-x-hidden',
                         'overscroll-contain px-1 py-2',
                         '[scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.07)_transparent]',
                       )}
@@ -320,13 +323,28 @@ export function TopicSelector({ menuOpens: _menuOpens }: TopicSelectorProps) {
                                       <span className="text-[10px] font-medium leading-tight tracking-[0.05em] text-ink/88">
                                         {opt.label}
                                       </span>
-                                      <span className="line-clamp-1 text-[8px] font-normal leading-relaxed tracking-wide text-ink-muted/55">
+                                      <div className="mt-1 flex flex-wrap gap-1">
+                                        {opt.tags.map((tag) => (
+                                          <span
+                                            key={`${opt.id}-${tag}`}
+                                            className="rounded-[0.2rem] border border-white/[0.07] bg-white/[0.035] px-1.5 py-0.5 text-[6.5px] font-medium uppercase tracking-[0.14em] text-ink-muted/78"
+                                          >
+                                            {tag}
+                                          </span>
+                                        ))}
+                                      </div>
+                                      <span className="mt-1 line-clamp-2 text-[8px] font-normal leading-relaxed tracking-wide text-ink-muted/58">
                                         <span className="tabular-nums text-ink-faint/62">
                                           {opt.rangeHint}
                                         </span>
                                         <span className="mx-1 text-ink-faint/25">·</span>
-                                        <span>{shortDescriptor(opt.description)}</span>
+                                        <span>{shortDescriptor(opt.description, 96)}</span>
                                       </span>
+                                      {opt.factSnippet ? (
+                                        <p className="mt-1.5 line-clamp-2 border-l border-white/[0.08] pl-2 text-[7.5px] leading-snug tracking-wide text-ink-faint/75">
+                                          {opt.factSnippet}
+                                        </p>
+                                      ) : null}
                                     </button>
                                   </li>
                                 )

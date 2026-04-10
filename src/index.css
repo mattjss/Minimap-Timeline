@@ -1,28 +1,45 @@
 @import "tailwindcss";
 
-/* Premium dark canvas — motion-first tool UI */
+/*
+ * Dark theme colors follow Uber Base Web `DarkTheme` semantic tokens
+ * (backgroundPrimary, backgroundSecondary, contentPrimary, …).
+ * See: https://baseweb.design/guides/theming/
+ * `class="dark"` enables Tailwind `dark:` utilities to match Base UI examples.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
 
-  --color-canvas: #040303;
-  --color-canvas-raised: #0c0a09;
-  --color-ink: #ece8e1;
-  --color-ink-muted: #9c948a;
-  --color-ink-faint: #5c564e;
-  --color-border: color-mix(in oklch, var(--color-ink) 12%, transparent);
-  --color-border-strong: color-mix(in oklch, var(--color-ink) 20%, transparent);
+  /* Base Web DarkTheme — background / content */
+  --color-canvas: #161616;
+  --color-canvas-raised: #292929;
+  --color-ink: #dedede;
+  --color-ink-muted: #ababab;
+  --color-ink-faint: #8a8a8a;
+
+  /*
+   * Timeline geometry: separate from body text so tracks read on backgroundPrimary
+   * without stacking faint `currentColor` × low opacity.
+   */
+  --color-timeline-spine: #6b6b6b;
+  --color-timeline-tick: #9a9a9a;
+  --color-timeline-mark: #c8c8c8;
+  --color-timeline-mark-emphasis: #f0f0f0;
+  --color-timeline-muted: #7a7a7a;
+
+  --color-border: rgba(222, 222, 222, 0.1);
+  --color-border-strong: rgba(222, 222, 222, 0.16);
   --color-accent: #c9ae7a;
   --color-accent-muted: color-mix(in oklch, var(--color-accent) 42%, transparent);
 
-  /* Floating chrome (small blur regions only — keep perf) */
-  --shell-chrome-bg: color-mix(in oklch, var(--color-canvas) 58%, transparent);
-  --shell-chrome-border: color-mix(in oklch, var(--color-ink) 9%, transparent);
-  --shell-chrome-highlight: color-mix(in oklch, var(--color-ink) 5%, transparent);
+  --shell-chrome-bg: color-mix(in oklch, var(--color-canvas) 72%, transparent);
+  --shell-chrome-border: rgba(222, 222, 222, 0.12);
+  --shell-chrome-highlight: rgba(255, 255, 255, 0.04);
 }
 
 @layer utilities {
-  /* Prefer aria-label for a11y strings; use this only when a DOM node is required */
   .sr-only {
     position: absolute !important;
     width: 1px !important;
@@ -37,13 +54,12 @@
   }
 }
 
-/* Outside Tailwind @layer so it wins over any framework .sr-only merge */
 .app-a11y-hidden {
   position: absolute !important;
   width: 1px !important;
   height: 1px !important;
-  padding: 0 !important;
   margin: -1px !important;
+  padding: 0 !important;
   overflow: hidden !important;
   clip: rect(0, 0, 0, 0) !important;
   clip-path: inset(50%) !important;
@@ -58,6 +74,7 @@
     border-color: var(--color-border);
   }
 
+  html.dark,
   html {
     color-scheme: dark;
     margin: 0;
