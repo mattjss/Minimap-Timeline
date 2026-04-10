@@ -2,9 +2,9 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { useMemo } from 'react'
 import { getSortedEventsForTopic } from '../../data/topicEvents'
 import {
-  referenceLayoutMorphSpring,
   shellMicroSpring,
-  timelineModeSyncSpring,
+  timelineGeometryTween,
+  timelineSpineMorph,
 } from '../../lib/motion'
 import { TIMELINE_STROKE } from '../../lib/timelineTheme'
 import { NODE_HOVER_SCALE, TIMELINE_MARK_RADIUS } from '../../lib/timelineVisual'
@@ -42,16 +42,16 @@ function scaleTickTowardCenter(
 export function UnifiedDataTimeline() {
   const reduceMotion = useReducedMotion()
   const instant = reduceMotion === true
-  const morph = instant ? { duration: 0 } : referenceLayoutMorphSpring
-  const spineOpacityTransition = instant
-    ? { duration: 0 }
-    : timelineModeSyncSpring
+  const morph = instant ? { duration: 0 } : timelineGeometryTween
+  const spineMorph = instant ? { duration: 0 } : timelineSpineMorph
 
   const timelineMode = useAppStore((s) => s.timelineMode)
   const activeTopicId = useAppStore((s) => s.activeTopicId)
   const hoverId = useAppStore((s) => s.horizontalHoverEventId)
   const selectedId = useAppStore((s) => s.horizontalSelectedEventId)
   const setHoverId = useAppStore((s) => s.setHorizontalHoverEventId)
+  const scheduleHoverClear = useAppStore((s) => s.scheduleHorizontalHoverClear)
+  const cancelHoverClear = useAppStore((s) => s.cancelHorizontalHoverClear)
   const openEventDetail = useAppStore((s) => s.openEventDetail)
   const dismiss = useAppStore((s) => s.dismissTimelineInteraction)
   const setSelectedId = useAppStore((s) => s.setHorizontalSelectedEventId)
@@ -75,14 +75,10 @@ export function UnifiedDataTimeline() {
   const morphXY = { x1: morph, y1: morph, x2: morph, y2: morph } as const
   const tickTransition = {
     ...morphXY,
-    opacity: shellMicroSpring,
+    opacity: morph,
   } as const
-  const nodeTransition = {
-    cx: morph,
-    cy: morph,
-    r: shellMicroSpring,
-    strokeWidth: shellMicroSpring,
-  } as const
+  const nodeLayoutMorph = morph
+  const nodeHoverSpring = instant ? { duration: 0 } : shellMicroSpring
 
   if (events.length === 0) {
     return (
@@ -100,8 +96,8 @@ export function UnifiedDataTimeline() {
           x2={W - 58}
           y2={TIMELINE_CY}
           stroke={TIMELINE_STROKE.spine}
-          strokeWidth={1.1}
-          strokeOpacity={0.45}
+          strokeWidth={0.6}
+          strokeOpacity={0.55}
           strokeLinecap="round"
         />
       </svg>
@@ -115,9 +111,7 @@ export function UnifiedDataTimeline() {
       fill="none"
       role="img"
       aria-label="Timeline"
-      preserveAspectRatio={
-        timelineMode === 'radial' ? 'xMaxYMax meet' : 'xMidYMid meet'
-      }
+      preserveAspectRatio="none"
     >
       <rect
         width={W}
@@ -130,7 +124,6 @@ export function UnifiedDataTimeline() {
 
       <motion.line
         stroke={TIMELINE_STROKE.spine}
-        strokeWidth={1.2}
         strokeLinecap="round"
         initial={false}
         animate={{
@@ -139,13 +132,15 @@ export function UnifiedDataTimeline() {
           x2: layout.spineLine.x2,
           y2: layout.spineLine.y2,
           opacity: timelineMode === 'radial' ? 0 : 1,
+          strokeWidth: timelineMode === 'radial' ? 0 : 0.65,
         }}
         transition={{
           x1: morph,
           y1: morph,
           x2: morph,
           y2: morph,
-          opacity: spineOpacityTransition,
+          opacity: spineMorph,
+          strokeWidth: spineMorph,
         }}
         style={{ pointerEvents: 'none' }}
       />
@@ -154,13 +149,18 @@ export function UnifiedDataTimeline() {
         d={layout.spineArcD}
         fill="none"
         stroke={TIMELINE_STROKE.spine}
-        strokeWidth={1.2}
         strokeLinecap="round"
         initial={false}
         animate={{
           opacity: timelineMode === 'radial' ? 1 : 0,
+          strokeWidth: timelineMode === 'radial' ? 0.65 : 0,
+          pathLength: timelineMode === 'radial' ? 1 : 0,
         }}
-        transition={{ opacity: spineOpacityTransition }}
+        transition={{
+          opacity: spineMorph,
+          strokeWidth: spineMorph,
+          pathLength: spineMorph,
+        }}
         style={{ pointerEvents: 'none' }}
       />
 
@@ -177,26 +177,29 @@ export function UnifiedDataTimeline() {
         const isSelected = selectedId === e.id
         const isHovered = hoverId === e.id
         const tickOpacity = isSelected
-          ? 1
+          ? 0.92
           : isHovered
-            ? 0.88
+            ? 0.72
             : timelineMode === 'radial'
-              ? 0.62
-              : 0.68
+              ? 0.48
+              : 0.52
         const markStroke =
           isSelected || isHovered
             ? TIMELINE_STROKE.markEmphasis
             : TIMELINE_STROKE.mark
         const markW = isSelected ? 0.95 : isHovered ? 0.82 : 0.68
-        const hitR = Math.max(12, baseR * 14)
+        const hitR = Math.max(22, baseR * 52)
 
         return (
           <g
             key={e.id}
             data-event-node={e.id}
             style={{ pointerEvents: 'all' }}
-            onPointerEnter={() => setHoverId(e.id)}
-            onPointerLeave={() => setHoverId(null)}
+            onPointerEnter={() => {
+              cancelHoverClear()
+              setHoverId(e.id)
+            }}
+            onPointerLeave={() => scheduleHoverClear()}
             onClick={(ev) => {
               ev.stopPropagation()
               openEventDetail(e.id)
@@ -224,7 +227,7 @@ export function UnifiedDataTimeline() {
             />
             <motion.line
               stroke={TIMELINE_STROKE.tick}
-              strokeWidth={0.9}
+              strokeWidth={0.5}
               strokeLinecap="round"
               initial={false}
               animate={{
@@ -249,9 +252,15 @@ export function UnifiedDataTimeline() {
                 cy: center.y,
                 r: isHovered ? baseR * NODE_HOVER_SCALE : baseR,
                 strokeWidth: markW,
-                strokeOpacity: isSelected ? 1 : isHovered ? 0.96 : 0.88,
+                strokeOpacity: isSelected ? 1 : isHovered ? 0.82 : 0.58,
               }}
-              transition={nodeTransition}
+              transition={{
+                cx: nodeLayoutMorph,
+                cy: nodeLayoutMorph,
+                strokeOpacity: nodeLayoutMorph,
+                strokeWidth: isHovered ? nodeHoverSpring : nodeLayoutMorph,
+                r: isHovered ? nodeHoverSpring : nodeLayoutMorph,
+              }}
               style={{ pointerEvents: 'none' }}
             />
           </g>

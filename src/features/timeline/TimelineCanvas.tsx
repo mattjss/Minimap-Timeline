@@ -1,10 +1,7 @@
 import { motion, useReducedMotion } from 'framer-motion'
 import { TimelineModeToggle } from '../../components/layout/TimelineModeToggle'
 import { topicHasRenderableTimeline } from '../../data/topicEvents'
-import {
-  referenceLayoutMorphSpring,
-  stageComposeSpring,
-} from '../../lib/motion'
+import { stageLayoutTween, timelineGeometryTween } from '../../lib/motion'
 import { cn } from '../../lib/utils'
 import { useAppStore } from '../../store/useAppStore'
 import { EventHoverPreview } from './EventHoverPreview'
@@ -20,10 +17,8 @@ export function TimelineCanvas() {
   const activeTopicId = useAppStore((s) => s.activeTopicId)
   const reduceMotion = useReducedMotion()
   const instant = reduceMotion === true
-  const morphTransition = instant
-    ? { duration: 0 }
-    : { ...referenceLayoutMorphSpring }
-  const stageTransition = instant ? { duration: 0 } : stageComposeSpring
+  const morphTransition = instant ? { duration: 0 } : timelineGeometryTween
+  const stageTransition = instant ? { duration: 0 } : stageLayoutTween
 
   const showDataTimeline =
     topicHasRenderableTimeline(activeTopicId) &&
@@ -39,13 +34,12 @@ export function TimelineCanvas() {
         aria-label="Timeline"
         className={cn(
           'absolute inset-0 flex min-h-0 min-w-0 flex-col',
-          'pointer-events-auto pt-[3.15rem] sm:pt-[3.35rem]',
+          'pointer-events-auto pt-[4.35rem] sm:pt-[4.55rem]',
         )}
       >
         <div
           className={cn(
             'relative min-h-0 min-w-0 flex-1 overflow-hidden',
-            'pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]',
             'pb-[env(safe-area-inset-bottom)]',
           )}
         >
@@ -53,9 +47,10 @@ export function TimelineCanvas() {
             data-timeline-stage
             layout={!instant}
             className={cn('absolute z-[1] select-none', stageSceneClasses(timelineMode))}
+            style={{ contain: 'layout paint', backfaceVisibility: 'hidden' }}
             transition={stageTransition}
           >
-            <div className="absolute inset-0 min-h-0 min-w-0">
+            <div className="absolute inset-0 min-h-0 min-w-0 overflow-hidden">
               {showDataTimeline ? (
                 <UnifiedDataTimeline />
               ) : (
@@ -71,7 +66,7 @@ export function TimelineCanvas() {
 
         <span className="sr-only">
           Timeline scene: horizontal strip along the bottom edge, vertical strip along the
-          left edge, radial dial as a quarter circle in the bottom-right corner.
+          left edge, radial track as a bottom semicircle between the lower corners.
         </span>
       </div>
     </>

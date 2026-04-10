@@ -1,41 +1,56 @@
 @import "tailwindcss";
 
 /*
- * Dark theme colors follow Uber Base Web `DarkTheme` semantic tokens
- * (backgroundPrimary, backgroundSecondary, contentPrimary, …).
- * See: https://baseweb.design/guides/theming/
- * `class="dark"` enables Tailwind `dark:` utilities to match Base UI examples.
+ * Dark editorial shell — same hierarchy as the light reference (quiet header, hero timeline):
+ * deep neutral field, soft light type, hairline geometry, minimal chrome.
  */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/*
+ * Type scale: Tailwind defaults (1rem = 16px).
+ * — text-xs (0.75rem): labels, overlines, compact meta — minimum for UI copy.
+ * — text-sm (0.875rem): secondary body, form fields, lists.
+ * — text-base (1rem): primary reading text in panels / modals.
+ * — text-lg+ : titles. Avoid arbitrary px below 12px for legibility (WCAG-friendly targets).
+ */
 @theme {
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
 
-  /* Base Web DarkTheme — background / content */
-  --color-canvas: #161616;
-  --color-canvas-raised: #292929;
-  --color-ink: #dedede;
-  --color-ink-muted: #ababab;
-  --color-ink-faint: #8a8a8a;
+  --color-canvas: #131312;
+  --color-canvas-raised: #1b1b19;
+  --color-canvas-warm: #161614;
 
-  /*
-   * Timeline geometry: separate from body text so tracks read on backgroundPrimary
-   * without stacking faint `currentColor` × low opacity.
-   */
-  --color-timeline-spine: #6b6b6b;
-  --color-timeline-tick: #9a9a9a;
-  --color-timeline-mark: #c8c8c8;
-  --color-timeline-mark-emphasis: #f0f0f0;
-  --color-timeline-muted: #7a7a7a;
+  --color-ink: #eaeae4;
+  --color-ink-muted: #9c9c94;
+  --color-ink-faint: #76766e;
+  --color-ink-whisper: #5a5a54;
 
-  --color-border: rgba(222, 222, 222, 0.1);
-  --color-border-strong: rgba(222, 222, 222, 0.16);
-  --color-accent: #c9ae7a;
-  --color-accent-muted: color-mix(in oklch, var(--color-accent) 42%, transparent);
+  /** Bright anchor — like the reference’s emphasized year / active mark */
+  --color-ui-active: #f5f5f0;
 
-  --shell-chrome-bg: color-mix(in oklch, var(--color-canvas) 72%, transparent);
-  --shell-chrome-border: rgba(222, 222, 222, 0.12);
+  /** Faint timeline — architectural ticks on a dark field */
+  --color-timeline-spine: #3a3a35;
+  --color-timeline-tick: #454540;
+  --color-timeline-mark: #6b6b62;
+  --color-timeline-mark-emphasis: var(--color-ui-active);
+  --color-timeline-muted: #2e2e2b;
+
+  --color-border: rgba(255, 255, 255, 0.07);
+  --color-border-strong: rgba(255, 255, 255, 0.11);
+
+  --color-accent: #c9b896;
+  --color-accent-muted: color-mix(in oklch, var(--color-accent) 40%, transparent);
+
+  --color-scrim: rgba(0, 0, 0, 0.55);
+
+  /** Top chrome — slight lift, still quiet */
+  --color-chrome-surface: color-mix(in oklch, var(--color-canvas) 86%, white 5%);
+  --color-chrome-border: rgba(255, 255, 255, 0.055);
+  --color-chrome-indicator: rgba(255, 255, 255, 0.065);
+
+  --shell-chrome-bg: var(--color-chrome-surface);
+  --shell-chrome-border: var(--color-chrome-border);
   --shell-chrome-highlight: rgba(255, 255, 255, 0.04);
 }
 
@@ -93,6 +108,8 @@
     height: 100dvh;
     overflow: hidden;
     font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.5;
     background-color: var(--color-canvas);
     color: var(--color-ink);
     -webkit-font-smoothing: antialiased;

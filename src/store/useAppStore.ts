@@ -2,6 +2,17 @@ import { create } from 'zustand'
 import { getSortedEventsForTopic } from '../data/topicEvents'
 import type { TimelineLayoutMode, TopicId } from '../types'
 
+const HOVER_CLEAR_MS = 340
+
+let horizontalHoverClearTimer: ReturnType<typeof setTimeout> | null = null
+
+function clearHorizontalHoverLeaveTimer() {
+  if (horizontalHoverClearTimer !== null) {
+    clearTimeout(horizontalHoverClearTimer)
+    horizontalHoverClearTimer = null
+  }
+}
+
 type AppState = {
   activeTopicId: TopicId | null
   setActiveTopicId: (id: TopicId | null) => void
@@ -9,6 +20,9 @@ type AppState = {
   setTimelineMode: (mode: TimelineLayoutMode) => void
   horizontalHoverEventId: string | null
   setHorizontalHoverEventId: (id: string | null) => void
+  /** After leaving a node or preview, delay clear so the cursor can move onto the hover card. */
+  scheduleHorizontalHoverClear: () => void
+  cancelHorizontalHoverClear: () => void
   horizontalSelectedEventId: string | null
   setHorizontalSelectedEventId: (id: string | null) => void
   eventDetailOpen: boolean
@@ -28,6 +42,7 @@ function firstEventIdForTopic(topicId: TopicId | null): string | null {
 export const useAppStore = create<AppState>((set, get) => ({
   activeTopicId: 'sf-giants',
   setActiveTopicId: (activeTopicId) => {
+    clearHorizontalHoverLeaveTimer()
     const first = firstEventIdForTopic(activeTopicId)
     set({
       activeTopicId,
@@ -37,32 +52,50 @@ export const useAppStore = create<AppState>((set, get) => ({
     })
   },
   timelineMode: 'horizontal',
-  setTimelineMode: (timelineMode) =>
+  setTimelineMode: (timelineMode) => {
+    clearHorizontalHoverLeaveTimer()
     set({
       timelineMode,
       horizontalHoverEventId: null,
       eventDetailOpen: false,
-    }),
+    })
+  },
   horizontalHoverEventId: null,
-  setHorizontalHoverEventId: (horizontalHoverEventId) =>
-    set({ horizontalHoverEventId }),
+  setHorizontalHoverEventId: (horizontalHoverEventId) => {
+    clearHorizontalHoverLeaveTimer()
+    set({ horizontalHoverEventId })
+  },
+  scheduleHorizontalHoverClear: () => {
+    clearHorizontalHoverLeaveTimer()
+    horizontalHoverClearTimer = setTimeout(() => {
+      set({ horizontalHoverEventId: null })
+      horizontalHoverClearTimer = null
+    }, HOVER_CLEAR_MS)
+  },
+  cancelHorizontalHoverClear: () => {
+    clearHorizontalHoverLeaveTimer()
+  },
   horizontalSelectedEventId: firstEventIdForTopic('sf-giants'),
   setHorizontalSelectedEventId: (horizontalSelectedEventId) =>
     set({ horizontalSelectedEventId }),
   eventDetailOpen: false,
   setEventDetailOpen: (eventDetailOpen) => set({ eventDetailOpen }),
-  dismissTimelineInteraction: () =>
+  dismissTimelineInteraction: () => {
+    clearHorizontalHoverLeaveTimer()
     set({
       horizontalHoverEventId: null,
       horizontalSelectedEventId: null,
       eventDetailOpen: false,
-    }),
-  openEventDetail: (eventId) =>
+    })
+  },
+  openEventDetail: (eventId) => {
+    clearHorizontalHoverLeaveTimer()
     set({
       horizontalSelectedEventId: eventId,
       eventDetailOpen: true,
       horizontalHoverEventId: null,
-    }),
+    })
+  },
   stepHorizontalSelection: (delta) => {
     const s = get()
     if (
@@ -76,6 +109,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (events.length === 0) return
     const idx = events.findIndex((e) => e.id === s.horizontalSelectedEventId)
     if (idx < 0) {
+      clearHorizontalHoverLeaveTimer()
       const i = delta > 0 ? 0 : events.length - 1
       set({
         horizontalSelectedEventId: events[i]!.id,
@@ -84,6 +118,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       })
       return
     }
+    clearHorizontalHoverLeaveTimer()
     const next = Math.min(events.length - 1, Math.max(0, idx + delta))
     set({
       horizontalSelectedEventId: events[next]!.id,

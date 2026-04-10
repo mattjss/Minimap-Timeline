@@ -1,53 +1,82 @@
 /**
- * Shared layout + node styling for timeline modes (SF Giants / future topics).
- * Coordinates are SVG user units for the main stage viewBox.
- * Radial mode: 90° dial anchored at the bottom-right corner (center on corner point).
+ * Shared layout + node styling for the main stage viewBox.
+ * Radial mode: bottom **semicircle** — diameter runs **corner to corner** along the bottom edge
+ * (x = 0 → W), bulging upward with a full half-turn so the track has a clear arc (not a shallow
+ * flattened chord).
  */
 export const TIMELINE_VIEW = {
   w: 640,
   h: 380,
 } as const
 
-/** Visible arc span — quarter circle (dial in the corner). */
-export const RADIAL_QUARTER_SWEEP = Math.PI / 2
+/** Visible arc span — half circle along the bottom. */
+export const RADIAL_SEMI_SWEEP = Math.PI
 
-/** Center of radial geometry: bottom-right of the viewBox (arc hangs off top/left). */
-export function radialCenter(viewW: number, viewH: number): { cx: number; cy: number } {
-  return { cx: viewW, cy: viewH }
+export type RadialTrackParams = {
+  cx: number
+  cy: number
+  R: number
+  xL: number
+  xR: number
+  thetaL: number
+  thetaR: number
+  sweep: number
 }
 
-export function radialTrackRadius(viewW: number, viewH: number): number {
-  return Math.min(viewW, viewH) * 0.9
+/** Full radial geometry: semicircle through bottom-left and bottom-right corners. */
+export function radialTrackParams(viewW: number, viewH: number): RadialTrackParams {
+  const R = viewW / 2
+  const cx = viewW / 2
+  const cy = viewH
+  return {
+    cx,
+    cy,
+    R,
+    xL: 0,
+    xR: viewW,
+    thetaL: Math.PI,
+    thetaR: Math.PI * 2,
+    sweep: RADIAL_SEMI_SWEEP,
+  }
+}
+
+/** @deprecated Use RADIAL_SEMI_SWEEP */
+export const RADIAL_QUARTER_SWEEP = RADIAL_SEMI_SWEEP
+
+/** Circle center: midpoint of the bottom edge (semicircle hub). */
+export function radialCenter(viewW: number, viewH: number): { cx: number; cy: number } {
+  return { cx: viewW / 2, cy: viewH }
+}
+
+/** Semicircle radius (half the view width). */
+export function radialTrackRadius(viewW: number, _viewH: number): number {
+  return viewW / 2
 }
 
 export function radialSweep(): number {
-  return RADIAL_QUARTER_SWEEP
+  return RADIAL_SEMI_SWEEP
 }
 
 /**
- * u ∈ [0,1] along the quarter arc: from west (along bottom toward −x) to north (−y in SVG).
- * Chronology matches H/V left→right / top→bottom mapping.
+ * u ∈ [0,1] along the upper semicircle: u=0 at bottom-left corner, u=1 at bottom-right.
  */
 export function radialAngleAtU0(): number {
   return Math.PI
 }
 
 export function radialAngleForU(u: number): number {
-  return Math.PI + u * RADIAL_QUARTER_SWEEP
+  return Math.PI + u * RADIAL_SEMI_SWEEP
 }
 
-/** SVG path for the primary radial track (90° arc). */
+/**
+ * Bottom semicircle from **corner to corner** (upper arc). Pins to x=0 and x=W on the bottom edge.
+ */
 export function radialTrackArcPath(viewW: number, viewH: number): string {
-  const { cx, cy } = radialCenter(viewW, viewH)
-  const TRACK_R = radialTrackRadius(viewW, viewH)
-  const a0 = radialAngleForU(0)
-  const a1 = radialAngleForU(1)
-  const x0 = cx + TRACK_R * Math.cos(a0)
-  const y0 = cy + TRACK_R * Math.sin(a0)
-  const x1 = cx + TRACK_R * Math.cos(a1)
-  const y1 = cy + TRACK_R * Math.sin(a1)
-  const largeArc = 0
-  return `M ${x0} ${y0} A ${TRACK_R} ${TRACK_R} 0 ${largeArc} 1 ${x1} ${y1}`
+  const R = viewW / 2
+  const cy = viewH
+  const largeArc = 1
+  const sweep = 1
+  return `M 0 ${cy} A ${R} ${R} 0 ${largeArc} ${sweep} ${viewW} ${cy}`
 }
 
 export type ImportanceLevel = 1 | 2 | 3

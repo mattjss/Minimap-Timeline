@@ -26,8 +26,8 @@ export function stageRelativeHoverAnchor(
       }
     case 'radial':
       return {
-        relX: nodeBounds.left - stageBounds.left - 6,
-        relY: cyMid,
+        relX: cx,
+        relY: cyTop - 4,
       }
     default:
       return { relX: cx, relY: cyTop }

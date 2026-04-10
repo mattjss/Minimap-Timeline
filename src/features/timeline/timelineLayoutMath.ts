@@ -11,11 +11,14 @@ import {
 const { w: W, h: H } = TIMELINE_VIEW
 export const TIMELINE_CX = W / 2
 export const TIMELINE_CY = H / 2
-const X0 = 22
-const X1 = W - 22
-const Y0 = 26
-const Y1 = H - 26
-const TICK_HALF = 6.75
+const X0 = 12
+const X1 = W - 12
+const Y0 = 12
+const Y1 = H - 12
+const TICK_HALF = 5.25
+
+/** Vertical mode: spine hugs the left edge of the stage (stretches with full-width SVG). */
+export const VERTICAL_SPINE_X = Math.round(W * 0.068)
 
 export type Point = { x: number; y: number }
 export type Segment = { x1: number; y1: number; x2: number; y2: number }
@@ -78,7 +81,7 @@ export function minimapPointHorizontal(u: number): Point {
 
 /** Vertical minimap: u → position on the spine line. */
 export function minimapPointVertical(u: number): Point {
-  return { x: TIMELINE_CX, y: Y0 + u * (Y1 - Y0) }
+  return { x: VERTICAL_SPINE_X, y: Y0 + u * (Y1 - Y0) }
 }
 
 /** Radial minimap: u → position on the quarter-arc (center = bottom-right of viewBox). */
@@ -103,9 +106,9 @@ function tickThroughCenterHorizontal(x: number): Segment {
 
 function tickThroughCenterVertical(y: number): Segment {
   return {
-    x1: TIMELINE_CX - TICK_HALF,
+    x1: VERTICAL_SPINE_X - TICK_HALF,
     y1: y,
-    x2: TIMELINE_CX + TICK_HALF,
+    x2: VERTICAL_SPINE_X + TICK_HALF,
     y2: y,
   }
 }
@@ -175,7 +178,7 @@ export function computeViewportBracket(
   }
 
   const { cx: rcx, cy: rcy } = radialCenter(W, H)
-  const TRACK_R = radialTrackRadius(W, H) - 11
+  const TRACK_R = radialTrackRadius(W, H) - 4
   const a0 = radialAngleForU(u[i0]!)
   const a1 = radialAngleForU(u[i1]!)
   const spanAngle = (u[i1]! - u[i0]!) * radialSweep()
@@ -235,7 +238,12 @@ export function computeSceneLayout(
       u,
       nodeCenters,
       nodeTicks,
-      spineLine: { x1: TIMELINE_CX, y1: Y0, x2: TIMELINE_CX, y2: Y1 },
+      spineLine: {
+        x1: VERTICAL_SPINE_X,
+        y1: Y0,
+        x2: VERTICAL_SPINE_X,
+        y2: Y1,
+      },
       spineArcD: radialTrackArcPath(W, H),
     }
   }

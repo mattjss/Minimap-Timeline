@@ -14,7 +14,7 @@ function MediaHero({ media }: { media: TimelineMediaItem[] }) {
   if (first?.type === 'video' && first.url) {
     return (
       <video
-        className="aspect-video w-full border-b border-white/[0.06] object-cover"
+        className="aspect-video w-full border-b border-border object-cover"
         controls
         muted
         playsInline
@@ -27,7 +27,7 @@ function MediaHero({ media }: { media: TimelineMediaItem[] }) {
   if (first?.type === 'video') {
     return (
       <div
-        className="flex aspect-video w-full items-center justify-center border-b border-white/[0.06] bg-black/40"
+        className="flex aspect-video w-full items-center justify-center border-b border-border bg-canvas-muted/50"
         role="img"
         aria-label={first.alt ?? 'Video'}
       >
@@ -54,13 +54,13 @@ function MediaHero({ media }: { media: TimelineMediaItem[] }) {
       <img
         src={first.url}
         alt={first.alt ?? ''}
-        className="aspect-video w-full border-b border-white/[0.06] object-cover"
+        className="aspect-video w-full border-b border-border object-cover"
       />
     )
   }
   return (
     <div
-      className="aspect-video w-full border-b border-white/[0.06] bg-gradient-to-br from-white/[0.05] to-transparent"
+      className="aspect-video w-full border-b border-border bg-gradient-to-br from-canvas-muted/80 to-transparent"
       role="img"
       aria-label={first?.alt ?? 'Media'}
     />
@@ -77,7 +77,7 @@ function GalleryStrip({ items }: { items: TimelineMediaItem[] }) {
       {rest.map((m) => (
         <li
           key={m.id}
-          className="aspect-video overflow-hidden rounded-md border border-white/[0.06] bg-white/[0.03]"
+          className="aspect-video overflow-hidden rounded-md border border-border bg-canvas-muted/40"
         >
           {m.type === 'video' && m.url ? (
             <video
@@ -95,7 +95,7 @@ function GalleryStrip({ items }: { items: TimelineMediaItem[] }) {
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-[9px] text-ink-faint/60">
+            <div className="flex h-full items-center justify-center text-xs text-ink-faint/70">
               {m.type === 'video' ? 'Video' : 'Image'}
             </div>
           )}
@@ -177,6 +177,12 @@ export function EventDetailModal() {
     mass: 0.85,
   }
 
+  /** Fade scrim on its own layer so the panel’s slide-out isn’t cut off by a parent opacity exit. */
+  const scrimTransition = {
+    duration: 0.38,
+    ease: motionTransition.ease,
+  }
+
   const hasPlatformBlock =
     Boolean(
       event &&
@@ -189,49 +195,44 @@ export function EventDetailModal() {
 
   return (
     <AnimatePresence>
-      {open && event ? (
-        <motion.div
-          key="event-detail"
-          role="presentation"
-          className={cn(
-            'fixed inset-0 z-50 flex max-w-[100vw]',
-            isDesktop ? 'justify-end' : 'items-end',
-          )}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2, ease: motionTransition.ease }}
-        >
-          <button
-            type="button"
-            aria-label="Close event detail"
-            className="absolute inset-0 bg-black/55"
-            onClick={() => dismiss()}
-          />
-          <motion.aside
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="event-detail-title"
-            initial={
-              isDesktop
-                ? { x: '100%', y: 0 }
-                : { x: 0, y: '100%' }
-            }
-            animate={{ x: 0, y: 0 }}
-            exit={
-              isDesktop
-                ? { x: '100%', y: 0 }
-                : { x: 0, y: '100%' }
-            }
-            transition={isDesktop ? drawerSpring : sheetSpring}
-            className={cn(
-              'relative z-[1] flex w-full flex-col bg-canvas',
-              'max-h-[min(90dvh,100%)] overflow-hidden rounded-t-[1rem] border-t border-white/[0.07]',
-              'md:h-full md:max-h-dvh md:max-w-[min(24rem,100vw)] md:rounded-none md:border-l md:border-t-0',
-              'shadow-[0_-16px_64px_rgba(0,0,0,0.5)] md:shadow-[-16px_0_64px_rgba(0,0,0,0.5)]',
-            )}
-          >
-            <div className="mx-auto mt-2 h-1 w-9 shrink-0 rounded-full bg-white/12 md:hidden" aria-hidden />
+      {open && event
+        ? [
+            <motion.button
+              key="event-detail-scrim"
+              type="button"
+              aria-label="Close event detail"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={scrimTransition}
+              className="fixed inset-0 z-50 bg-scrim"
+              onClick={() => dismiss()}
+            />,
+            <motion.aside
+              key="event-detail-panel"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="event-detail-title"
+              initial={
+                isDesktop
+                  ? { x: '100%', y: 0 }
+                  : { x: 0, y: '100%' }
+              }
+              animate={{ x: 0, y: 0 }}
+              exit={
+                isDesktop
+                  ? { x: '100%', y: 0 }
+                  : { x: 0, y: '100%' }
+              }
+              transition={isDesktop ? drawerSpring : sheetSpring}
+              className={cn(
+                'fixed z-[51] flex w-full flex-col bg-canvas',
+                'bottom-0 left-0 right-0 max-h-[min(90dvh,100%)] overflow-hidden rounded-t-[0.65rem] border-t border-border',
+                'md:inset-y-0 md:left-auto md:right-0 md:max-h-dvh md:max-w-[min(28rem,100vw)] md:rounded-none md:border-l md:border-t-0',
+                'shadow-[0_-12px_48px_rgba(0,0,0,0.45)] md:shadow-[-12px_0_48px_rgba(0,0,0,0.45)]',
+              )}
+            >
+            <div className="mx-auto mt-2 h-0.5 w-7 shrink-0 rounded-full bg-ink-whisper/35 md:hidden" aria-hidden />
 
             <div className="relative shrink-0">
               <button
@@ -239,9 +240,9 @@ export function EventDetailModal() {
                 onClick={() => dismiss()}
                 aria-label="Close"
                 className={cn(
-                  'absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full',
-                  'border border-white/[0.08] bg-black/40 text-ink-muted backdrop-blur-sm',
-                  'transition-colors hover:border-white/14 hover:text-ink/90',
+                  'absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-full',
+                  'border border-border bg-canvas-raised/90 text-ink-faint',
+                  'transition-colors hover:border-border-strong hover:text-ink-muted',
                 )}
               >
                 <CloseIcon />
@@ -249,15 +250,15 @@ export function EventDetailModal() {
               <MediaHero media={event.media} />
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6 pt-4">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-6 pt-3 md:px-5">
               <header className="space-y-1">
                 <h2
                   id="event-detail-title"
-                  className="pr-10 text-[14px] font-medium leading-snug tracking-wide text-ink/94"
+                  className="pr-9 text-lg font-medium leading-snug text-ink"
                 >
                   {event.title}
                 </h2>
-                <p className="text-[10px] font-normal tracking-wide text-ink-muted/88">
+                <p className="text-sm font-normal text-ink-muted">
                   {event.year}
                   {event.category ? ` · ${event.category}` : ''}
                   {event.subtype ? (
@@ -269,11 +270,11 @@ export function EventDetailModal() {
               {narrative.body ? (
                 <div className="mt-4 space-y-2">
                   {narrative.lead ? (
-                    <p className="text-[10px] leading-relaxed text-ink-muted/82">
+                    <p className="text-sm leading-relaxed text-ink-muted">
                       {narrative.lead}
                     </p>
                   ) : null}
-                  <p className="text-[11px] leading-relaxed text-ink/86">
+                  <p className="text-base leading-relaxed text-ink/95">
                     {narrative.body}
                   </p>
                 </div>
@@ -281,22 +282,22 @@ export function EventDetailModal() {
 
               {hasPlatformBlock ? (
                 <section className="mt-5 space-y-2" aria-label="Context">
-                  <dl className="space-y-2.5 text-[11px] text-ink/84">
+                  <dl className="space-y-2.5 text-sm text-ink/90">
                     {event.platformGeneration ? (
                       <div className="flex flex-col gap-0.5">
-                        <dt className="text-[9px] text-ink-faint/80">Generation</dt>
+                        <dt className="text-xs font-medium text-ink-faint">Generation</dt>
                         <dd>{event.platformGeneration}</dd>
                       </div>
                     ) : null}
                     {event.products && event.products.length > 0 ? (
                       <div className="flex flex-col gap-0.5">
-                        <dt className="text-[9px] text-ink-faint/80">Products</dt>
+                        <dt className="text-xs font-medium text-ink-faint">Products</dt>
                         <dd>{event.products.join(' · ')}</dd>
                       </div>
                     ) : null}
                     {event.notableGames && event.notableGames.length > 0 ? (
                       <div className="flex flex-col gap-0.5">
-                        <dt className="text-[9px] text-ink-faint/80">
+                        <dt className="text-xs font-medium text-ink-faint">
                           {event.subtype === 'year-top-games'
                             ? 'Standouts'
                             : 'Notable'}
@@ -312,13 +313,13 @@ export function EventDetailModal() {
                     ) : null}
                     {event.publisher ? (
                       <div className="flex flex-col gap-0.5">
-                        <dt className="text-[9px] text-ink-faint/80">Publisher</dt>
+                        <dt className="text-xs font-medium text-ink-faint">Publisher</dt>
                         <dd>{event.publisher}</dd>
                       </div>
                     ) : null}
                     {event.studio ? (
                       <div className="flex flex-col gap-0.5">
-                        <dt className="text-[9px] text-ink-faint/80">Studio</dt>
+                        <dt className="text-xs font-medium text-ink-faint">Studio</dt>
                         <dd>{event.studio}</dd>
                       </div>
                     ) : null}
@@ -331,8 +332,8 @@ export function EventDetailModal() {
                   <dl className="grid gap-x-4 gap-y-3 md:grid-cols-2">
                     {displayFacts.map((f) => (
                       <div key={`${f.label}-${f.value}`} className="min-w-0">
-                        <dt className="text-[9px] text-ink-faint/75">{f.label}</dt>
-                        <dd className="mt-0.5 text-[11px] leading-snug text-ink/88">
+                        <dt className="text-xs font-medium text-ink-faint">{f.label}</dt>
+                        <dd className="mt-0.5 text-sm leading-snug text-ink/90">
                           {f.value}
                         </dd>
                       </div>
@@ -352,7 +353,7 @@ export function EventDetailModal() {
                   <ul className="flex flex-wrap gap-1">
                     {event.related.map((r, i) => (
                       <li key={`${r.kind}-${r.label}-${i}`}>
-                        <span className="inline-flex items-center rounded-md border border-white/[0.07] bg-white/[0.03] px-2 py-0.5 text-[10px] text-ink-muted/90">
+                        <span className="inline-flex items-center rounded-md border border-border bg-canvas-muted/50 px-2 py-0.5 text-xs font-normal text-ink-faint">
                           <span className="mr-1 text-ink-faint/70">{r.kind}</span>
                           {r.label}
                         </span>
@@ -363,10 +364,10 @@ export function EventDetailModal() {
               ) : null}
 
               {event.sources.length > 0 ? (
-                <section className="mt-6 border-t border-white/[0.06] pt-4" aria-label="Sources">
+                <section className="mt-6 border-t border-border pt-4" aria-label="Sources">
                   <ul className="space-y-1">
                     {event.sources.map((s, i) => (
-                      <li key={`${s.title}-${i}`} className="text-[10px] leading-snug">
+                      <li key={`${s.title}-${i}`} className="text-sm leading-snug">
                         {s.url ? (
                           <a
                             href={s.url}
@@ -390,9 +391,9 @@ export function EventDetailModal() {
                 aria-hidden
               />
             </div>
-          </motion.aside>
-        </motion.div>
-      ) : null}
+          </motion.aside>,
+          ]
+        : null}
     </AnimatePresence>
   )
 }

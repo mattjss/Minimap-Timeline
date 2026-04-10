@@ -11,11 +11,13 @@ import {
   TIMELINE_VIEW,
 } from '../../lib/timelineVisual'
 import type { TimelineLayoutMode } from '../../types'
+import { VERTICAL_SPINE_X } from './timelineLayoutMath'
 
 const W = TIMELINE_VIEW.w
 const H = TIMELINE_VIEW.h
 const CX = W / 2
 const CY = H / 2
+const VX = VERTICAL_SPINE_X
 const RCX = radialCenter(W, H).cx
 const RCY = radialCenter(W, H).cy
 const NODE_COUNT = REFERENCE_SCHEMATIC_NODE_COUNT
@@ -30,7 +32,7 @@ function nodePosition(mode: TimelineLayoutMode, i: number) {
     case 'horizontal':
       return { x: X_PAD + t * (W - 2 * X_PAD), y: CY }
     case 'vertical':
-      return { x: CX, y: Y_PAD + t * (H - 2 * Y_PAD) }
+      return { x: VX, y: Y_PAD + t * (H - 2 * Y_PAD) }
     case 'radial': {
       const u = i / (NODE_COUNT - 1 || 1)
       const angle = radialAngleForU(u)
@@ -77,7 +79,7 @@ function primarySpine(mode: TimelineLayoutMode) {
     case 'horizontal':
       return { x1: X_PAD, y1: CY, x2: W - X_PAD, y2: CY, opacity: 1 }
     case 'vertical':
-      return { x1: CX, y1: Y_PAD, x2: CX, y2: H - Y_PAD, opacity: 1 }
+      return { x1: VX, y1: Y_PAD, x2: VX, y2: H - Y_PAD, opacity: 1 }
     case 'radial':
       return { x1: CX, y1: CY, x2: CX, y2: CY, opacity: 0 }
     default:
@@ -103,20 +105,25 @@ export function SchematicTimeline({ mode, transition }: SchematicTimelineProps) 
       className="h-full w-full overflow-visible"
       fill="none"
       aria-hidden
+      preserveAspectRatio="none"
     >
       <motion.path
         fill="none"
         stroke={TIMELINE_STROKE.spine}
-        strokeWidth={1.2}
+        strokeWidth={0.65}
         strokeLinecap="round"
         d={RADIAL_TRACK_D}
-        animate={{ opacity: radialTrackOpacity }}
+        initial={false}
+        animate={{
+          opacity: radialTrackOpacity,
+          pathLength: radialTrackOpacity,
+        }}
         transition={transition}
       />
 
       <motion.line
         stroke={TIMELINE_STROKE.spine}
-        strokeWidth={1.2}
+        strokeWidth={0.65}
         strokeLinecap="round"
         animate={{
           x1: spine.x1,
@@ -135,14 +142,14 @@ export function SchematicTimeline({ mode, transition }: SchematicTimelineProps) 
           <motion.line
             key={`tick-${i}`}
             stroke={TIMELINE_STROKE.tick}
-            strokeWidth={0.9}
+            strokeWidth={0.5}
             strokeLinecap="round"
             animate={{
               x1: tick.x1,
               y1: tick.y1,
               x2: tick.x2,
               y2: tick.y2,
-              opacity: 0.72,
+              opacity: 0.52,
             }}
             transition={transition}
           />
@@ -157,11 +164,11 @@ export function SchematicTimeline({ mode, transition }: SchematicTimelineProps) 
             r={NODE_R}
             fill="none"
             stroke={TIMELINE_STROKE.mark}
-            strokeWidth={0.65}
+            strokeWidth={0.45}
             animate={{
               cx: x,
               cy: y,
-              strokeOpacity: 0.9,
+              strokeOpacity: 0.58,
             }}
             transition={transition}
           />
