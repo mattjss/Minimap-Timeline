@@ -1,5 +1,6 @@
 import type { CuratedTopic, TopicGroupId, TopicId } from '../types'
 import { aiHistorySeedEvents } from './seeds/aiHistory'
+import { disneySeedEvents } from './seeds/disney'
 import { appleSeedEvents } from './seeds/apple'
 import { gsWarriorsSeedEvents } from './seeds/gsWarriors'
 import { nintendoSeedEvents } from './seeds/nintendo'
@@ -139,6 +140,16 @@ export const CURATED_TOPICS: readonly CuratedTopic[] = [
       'National milestones: founding, expansion, civil rights, wars, and modern governance.',
     accentColor: '#c4a35a',
     events: usHistorySeedEvents,
+  },
+  {
+    id: 'disney',
+    label: 'Disney history',
+    trigger: 'Disney',
+    groupId: 'history',
+    description:
+      'From Mickey and Snow White to parks, renaissance hits, major acquisitions, and Disney+.',
+    accentColor: '#0063E5',
+    events: disneySeedEvents,
   },
   {
     id: 'nintendo',

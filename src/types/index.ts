@@ -75,6 +75,7 @@ export type TopicId =
   | 'us-history'
   | 'nintendo'
   | 'xbox'
+  | 'disney'
 
 /** Curated topic: metadata + local seed events (single source in `curatedTopics`). */
 export type CuratedTopic = {

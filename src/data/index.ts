@@ -20,6 +20,7 @@ export {
 } from './topicEvents'
 export { aiHistorySeedEvents } from './seeds/aiHistory'
 export { appleSeedEvents } from './seeds/apple'
+export { disneySeedEvents } from './seeds/disney'
 export { sf49ersSeedEvents } from './seeds/sf49ers'
 export { sfGiantsSeedEvents } from './seeds/sfGiants'
 export { gsWarriorsSeedEvents } from './seeds/gsWarriors'
